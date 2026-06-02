@@ -1,0 +1,18 @@
+const ROLES = {
+  ADMIN: 'ADMIN',
+  EMPLOYER: 'EMPLOYER',
+  RECRUITER: 'RECRUITER',
+  CANDIDATE: 'CANDIDATE'
+};
+
+const STATUSES = {
+  PENDING: 'PENDING',
+  ACTIVE: 'ACTIVE',
+  SUSPENDED: 'SUSPENDED',
+  BANNED: 'BANNED'
+};
+
+module.exports = {
+  ROLES,
+  STATUSES
+};

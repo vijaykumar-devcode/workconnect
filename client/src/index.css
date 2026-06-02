@@ -1,0 +1,118 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Outfit', 'Inter', sans-serif;
+  
+  /* Brand Theme Colors mapping */
+  --color-brand-navy: #0B1F3B;
+  --color-brand-blue: #1E63FF;
+  --color-brand-secondary: #2F80ED;
+  --color-brand-accent: #00A3FF;
+  
+  --color-theme-bg: var(--bg);
+  --color-theme-surface: var(--surface);
+  --color-theme-border: var(--border);
+  --color-theme-text-primary: var(--text-primary);
+  --color-theme-text-secondary: var(--text-secondary);
+  
+  --color-theme-success: var(--success);
+  --color-theme-warning: var(--warning);
+  --color-theme-error: var(--error);
+  --color-theme-info: var(--info);
+}
+
+:root {
+  /* Light Mode Variables */
+  --bg: #F7FAFF;
+  --surface: #FFFFFF;
+  --border: #E6EEF9;
+  --text-primary: #0B1F3B;
+  --text-secondary: #4B5563;
+  
+  --success: #22C55E;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #38BDF8;
+}
+
+:root.dark {
+  /* Dark Mode Variables */
+  --bg: #0A0F1C;
+  --surface: #111827;
+  --border: #1F2A44;
+  --text-primary: #E5E7EB;
+  --text-secondary: #94A3B8;
+}
+
+@layer base {
+  body {
+    background-color: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Outfit', 'Inter', sans-serif;
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--border);
+  border-radius: 9999px;
+}
+
+/* Premium Card Glassmorphism and Gradients */
+.glass-panel {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  box-shadow: 0 4px 20px -2px rgba(11, 31, 59, 0.03);
+}
+
+.gradient-text {
+  background: linear-gradient(135deg, #1E63FF 0%, #00A3FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.gradient-btn {
+  background: linear-gradient(135deg, #1E63FF 0%, #2F80ED 100%);
+  color: #FFFFFF;
+  font-weight: 500;
+  box-shadow: 0 4px 14px 0 rgba(30, 99, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.gradient-btn:hover {
+  box-shadow: 0 6px 20px 0 rgba(30, 99, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+.gradient-btn:active {
+  transform: translateY(0);
+}
+
+/* Utility to ensure standard inputs are clean */
+.form-input {
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1.5px solid var(--border);
+  background-color: var(--surface);
+  color: var(--text-primary);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.form-input:focus {
+  border-color: #1E63FF;
+  box-shadow: 0 0 0 3px rgba(30, 99, 255, 0.15);
+}
