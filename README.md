@@ -1,4 +1,4 @@
-# WorkConnect — Enterprise Recruitment Ecosystem
+# WorkConnect — Recruitment Ecosystem
 
 WorkConnect is a production-ready, full-stack Job Portal and Recruitment Management Platform engineered using the MERN stack (MongoDB, Express, React, Node.js). 
 
