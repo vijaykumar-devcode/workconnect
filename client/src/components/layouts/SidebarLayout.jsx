@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../features/auth/authSlice';
 import { useTheme } from '../../context/ThemeContext';
@@ -78,7 +78,9 @@ const SidebarLayout = ({ children }) => {
     <div className="min-h-screen flex bg-theme-bg text-theme-text-primary transition-colors duration-200">
       {/* Mobile Header Toggle */}
       <div className="lg:hidden fixed top-0 left-0 right-0 bg-theme-surface border-b border-theme-border px-6 py-4 flex items-center justify-between z-30 shadow-sm transition-colors duration-200">
-        <Logo variant="full" theme={theme} iconClassName="w-7 h-7" textClassName="text-lg" />
+        <Link to="/" className="cursor-pointer hover:opacity-90 transition-opacity">
+          <Logo variant="full" theme={theme} iconClassName="w-7 h-7" textClassName="text-lg" />
+        </Link>
         <div className="flex items-center gap-3">
           <button
             onClick={toggleTheme}
@@ -103,7 +105,9 @@ const SidebarLayout = ({ children }) => {
       >
         {/* Brand Logo */}
         <div className="pb-4 border-b border-theme-border mb-4 pt-3 lg:pt-0">
-          <Logo variant="full" theme={theme} iconClassName="w-8 h-8" textClassName="text-xl" />
+          <Link to="/" className="cursor-pointer hover:opacity-90 transition-opacity block">
+            <Logo variant="full" theme={theme} iconClassName="w-8 h-8" textClassName="text-xl" />
+          </Link>
         </div>
 
         {/* User Card */}

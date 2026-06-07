@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchJobs, createJob, updateJob, deleteJob, duplicateJob, assignRecruiter } from '../jobs/jobSlice';
 import { fetchApplications, updateApplicationStage, addComment } from '../applications/applicationSlice';
@@ -18,6 +19,7 @@ import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 
 const EmployerDashboard = () => {
+  const location = useLocation();
   const dispatch = useDispatch();
   const { jobs } = useSelector((state) => state.jobs);
   const { applications, loading } = useSelector((state) => state.applications);
@@ -292,17 +294,21 @@ const EmployerDashboard = () => {
         </div>
       ),
     },
-  ];
+    ];
+  
+  const isJobsView = location.pathname.endsWith('/jobs');
+  const isApplicantsView = location.pathname.endsWith('/applicants');
+  const isDashboardView = !isJobsView && !isApplicantsView;
 
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-600 tracking-tight leading-none mb-2">
-            Employer Dashboard
+            {isJobsView ? 'Jobs Manager' : isApplicantsView ? 'Applicants Tracking' : 'Employer Dashboard'}
           </h1>
           <p className="text-sm font-semibold text-slate-400">
-            Publish job vacancies, schedule live panels, and coordinate offers
+            {isJobsView ? 'Publish and manage job vacancies' : isApplicantsView ? 'Review and progress candidate applications' : 'Publish job vacancies, schedule live panels, and coordinate offers'}
           </p>
         </div>
         <Button variant="primary" onClick={() => setIsPostOpen(true)}>
@@ -310,26 +316,31 @@ const EmployerDashboard = () => {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-        <Card title="Posted Jobs" subtitle="Active Listings" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.totalJobs}</span>
-          <Briefcase className="text-brand-500" size={32} />
-        </Card>
-        <Card title="Applicants" subtitle="Total Received" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.totalApplications}</span>
-          <Users className="text-indigo-500" size={32} />
-        </Card>
-        <Card title="Hired" subtitle="Successfully Onboarded" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.hires}</span>
-          <CheckCircle className="text-emerald-500" size={32} />
-        </Card>
-      </div>
+      {/* Stats - Only on main dashboard */}
+      {isDashboardView && (
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+          <Card title="Posted Jobs" subtitle="Active Listings" bodyClassName="flex items-center justify-between !py-4">
+            <span className="text-3xl font-black text-slate-800">{stats.totalJobs}</span>
+            <Briefcase className="text-brand-500" size={32} />
+          </Card>
+          <Card title="Applicants" subtitle="Total Received" bodyClassName="flex items-center justify-between !py-4">
+            <span className="text-3xl font-black text-slate-800">{stats.totalApplications}</span>
+            <Users className="text-indigo-500" size={32} />
+          </Card>
+          <Card title="Hired" subtitle="Successfully Onboarded" bodyClassName="flex items-center justify-between !py-4">
+            <span className="text-3xl font-black text-slate-800">{stats.hires}</span>
+            <CheckCircle className="text-emerald-500" size={32} />
+          </Card>
+        </div>
+      )}
 
-      {/* Jobs list */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-1 space-y-4">
-          <Card title="Active Listings">
+      {/* Main Content Grid */}
+      <div className={`grid grid-cols-1 ${isDashboardView ? 'lg:grid-cols-3' : ''} gap-8`}>
+        
+        {/* Jobs list */}
+        {(isDashboardView || isJobsView) && (
+          <div className={`${isDashboardView ? 'lg:col-span-1' : ''} space-y-4`}>
+            <Card title="Active Listings">
             {jobs.length === 0 ? (
               <p className="text-xs text-slate-400 font-medium">No posted jobs.</p>
             ) : (
@@ -364,24 +375,28 @@ const EmployerDashboard = () => {
                 ))}
               </div>
             )}
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
 
-        <div className="lg:col-span-2">
-          <Card title="Applications Pipelines Tracking">
+        {/* Applications */}
+        {(isDashboardView || isApplicantsView) && (
+          <div className={isDashboardView ? 'lg:col-span-2' : ''}>
+            <Card title="Applications Pipelines Tracking">
             <Table
               columns={columns}
               data={applications}
               loading={loading}
               emptyMessage="No candidate has applied to your listings yet."
             />
-          </Card>
-        </div>
+            </Card>
+          </div>
+        )}
       </div>
 
       {/* Modal post job */}
       {isPostOpen && (
-        <Modal isOpen={isPostOpen} onClose={() => setIsPostOpen(false)} title="Create New Job Listing" maxWidth="max-w-4xl">
+        <Modal isOpen={isPostOpen} onClose={() => setIsPostOpen(false)} title="Create New Job Listing" maxWidth="max-w-5xl">
           <form onSubmit={handlePostJob} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column */}
@@ -412,12 +427,12 @@ const EmployerDashboard = () => {
               {/* Right Column - Rich Text */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-800 border-b border-slate-100 pb-2">3. Job Description</h3>
-                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden h-[400px]">
                   <ReactQuill 
                     theme="snow" 
                     value={newJob.description} 
                     onChange={(content) => setNewJob({...newJob, description: content})} 
-                    className="h-80 mb-10"
+                    className="h-full pb-10"
                   />
                 </div>
               </div>
@@ -433,7 +448,7 @@ const EmployerDashboard = () => {
 
       {/* Modal edit job */}
       {isEditOpen && editingJob && (
-        <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Job Listing" maxWidth="max-w-4xl">
+        <Modal isOpen={isEditOpen} onClose={() => setIsEditOpen(false)} title="Edit Job Listing" maxWidth="max-w-5xl">
           <form onSubmit={handleEditSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Left Column */}
@@ -464,12 +479,12 @@ const EmployerDashboard = () => {
               {/* Right Column - Rich Text */}
               <div className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-600 border-b border-slate-100 pb-2">3. Job Description</h3>
-                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                <div className="bg-white border border-slate-200 rounded-lg overflow-hidden h-[400px]">
                   <ReactQuill 
                     theme="snow" 
                     value={editingJob.description} 
                     onChange={(content) => setEditingJob({...editingJob, description: content})} 
-                    className="h-80 mb-10"
+                    className="h-full pb-10"
                   />
                 </div>
               </div>

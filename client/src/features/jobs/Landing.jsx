@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchJobs } from './jobSlice';
 import { applyToJob } from '../applications/applicationSlice';
@@ -86,11 +86,11 @@ const Landing = () => {
     <div className="min-h-screen bg-theme-bg text-theme-text-primary flex flex-col font-sans transition-colors duration-200">
       {/* Navbar */}
       <header className="bg-theme-surface border-b border-theme-border px-6 lg:px-12 py-5 flex items-center justify-between shadow-sm sticky top-0 z-30 transition-colors duration-200">
-        <div className="flex items-center gap-2">
+        <Link to="/" className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity">
           {/* Logo brand icon on mobile, full logo on large screens */}
           <Logo variant="icon-only" iconClassName="w-8 h-8 md:hidden" />
           <Logo variant="full" theme={theme} iconClassName="w-8 h-8 hidden md:block" />
-        </div>
+        </Link>
         <div className="flex items-center gap-4">
           {isAuthenticated ? (
             <Button
