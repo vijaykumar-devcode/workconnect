@@ -112,7 +112,7 @@ class ApplicationService {
     // Trigger Job Application Email
     const candidate = await User.findById(candidateId);
     if (candidate) {
-      emailService.applicationEmail(candidate, job.title);
+      await emailService.applicationEmail(candidate, job.title);
     }
 
     return application;
@@ -189,10 +189,10 @@ class ApplicationService {
 
     // Trigger emails based on new ATS stage
     if (newStage === 'Rejected' && application.candidate) {
-      emailService.rejectionEmail(application.candidate, application.job?.title);
+      await emailService.rejectionEmail(application.candidate, application.job?.title);
     } else if (newStage === 'Onboarded' && application.candidate) {
       const companyName = application.job?.company?.name || 'WorkConnect Partner';
-      emailService.onboardingEmail(application.candidate, companyName);
+      await emailService.onboardingEmail(application.candidate, companyName);
     }
 
     return application;

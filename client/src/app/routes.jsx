@@ -12,6 +12,7 @@ import CandidateProfile from '../features/candidates/CandidateProfile';
 import PublicCandidateProfile from '../features/candidates/PublicCandidateProfile';
 import EmployerDashboard from '../features/companies/EmployerDashboard';
 import EmployerCompany from '../features/companies/EmployerCompany';
+import EmployerTeam from '../features/companies/EmployerTeam';
 import EmployerInterviews from '../features/companies/EmployerInterviews';
 import EmployerOffers from '../features/companies/EmployerOffers';
 import RecruiterDashboard from '../features/recruiters/RecruiterDashboard';
@@ -130,7 +131,7 @@ const AppRoutes = () => {
         path="/employer/team"
         element={
           <ProtectedRoute allowedRoles={['EMPLOYER']}>
-            <EmployerDashboard />
+            <EmployerTeam />
           </ProtectedRoute>
         }
       />

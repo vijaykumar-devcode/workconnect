@@ -42,7 +42,7 @@ class InterviewService {
 
     // Trigger Interview Invite Email
     if (application.candidate && application.job) {
-      emailService.interviewEmail(application.candidate, application.job.title, interview);
+      await emailService.interviewEmail(application.candidate, application.job.title, interview);
     }
 
     return interview;

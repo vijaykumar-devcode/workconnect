@@ -205,7 +205,7 @@ const Landing = () => {
                   <div className="flex items-center gap-3.5 mb-4">
                     <div className="w-12 h-12 rounded-xl bg-theme-bg border border-theme-border flex items-center justify-center font-bold text-theme-text-secondary overflow-hidden shadow-sm">
                       {job.company?.logo ? (
-                        <img src={`${import.meta.env.VITE_API_URL || ''}${job.company.logo}`} alt="logo" className="w-full h-full object-cover" />
+                        <img src={job.company?.logo?.startsWith('http') ? job.company.logo : `${import.meta.env.VITE_API_URL || ''}${job.company.logo}`} alt="logo" className="w-full h-full object-contain p-1" />
                       ) : (
                         job.company?.name?.charAt(0) || 'C'
                       )}
@@ -269,7 +269,7 @@ const Landing = () => {
             <div className="flex items-center gap-4.5">
               <div className="w-16 h-16 rounded-2xl bg-theme-bg border border-theme-border flex items-center justify-center font-extrabold text-theme-text-secondary text-xl shadow-md">
                 {selectedJob.company?.logo ? (
-                  <img src={`${import.meta.env.VITE_API_URL || ''}${selectedJob.company.logo}`} alt="logo" className="w-full h-full object-cover" />
+                  <img src={selectedJob.company?.logo?.startsWith('http') ? selectedJob.company.logo : `${import.meta.env.VITE_API_URL || ''}${selectedJob.company.logo}`} alt="logo" className="w-full h-full object-contain p-1" />
                 ) : (
                   selectedJob.company?.name?.charAt(0) || 'C'
                 )}

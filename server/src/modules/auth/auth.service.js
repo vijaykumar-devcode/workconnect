@@ -50,8 +50,8 @@ class AuthService {
     });
 
     // Trigger Welcome & OTP Email
-    emailService.welcomeEmail(user);
-    emailService.otpEmail(user, otp);
+    await emailService.welcomeEmail(user);
+    await emailService.otpEmail(user, otp);
 
     user.password = undefined;
     user.otp = undefined;
@@ -165,7 +165,7 @@ class AuthService {
     user.otpExpires = Date.now() + 10 * 60 * 1000;
     await user.save();
 
-    emailService.otpEmail(user, otp);
+    await emailService.otpEmail(user, otp);
     return { message: 'A new OTP has been sent to your email.' };
   }
 

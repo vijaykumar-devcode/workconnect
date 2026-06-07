@@ -114,8 +114,8 @@ class CompanyService {
     await company.save();
 
     // Trigger emails
-    emailService.recruiterInvitationEmail(recruiter, company.name, password);
-    emailService.otpEmail(recruiter, otp);
+    await emailService.recruiterInvitationEmail(recruiter, company.name, password);
+    await emailService.otpEmail(recruiter, otp);
 
     recruiter.password = undefined;
     recruiter.otp = undefined;
@@ -155,7 +155,7 @@ class CompanyService {
 
     // Trigger company approval/rejection email
     if (company.owner) {
-      emailService.approvalEmail(company.owner, company.name, isVerified);
+      await emailService.approvalEmail(company.owner, company.name, isVerified);
     }
 
     return company;

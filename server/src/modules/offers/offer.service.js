@@ -138,7 +138,7 @@ class OfferService {
 
       // Trigger Job Offer Email
       if (application.candidate && application.job) {
-        emailService.offerEmail(application.candidate, application.job.title, offer);
+        await emailService.offerEmail(application.candidate, application.job.title, offer);
       }
     }
 

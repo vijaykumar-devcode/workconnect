@@ -1,14 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { fetchMyCompany, registerCompany, updateMyCompany, addRecruiter, removeRecruiter } from './companySlice';
+import { fetchMyCompany, registerCompany, updateMyCompany } from './companySlice';
 import { useForm } from 'react-hook-form';
 import Card from '../../components/ui/Card';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
 import Badge from '../../components/ui/Badge';
-import Table from '../../components/ui/Table';
-import Modal from '../../components/ui/Modal';
-import { Building, MapPin, Globe, Compass, CheckCircle, Users, Plus, Trash2, UploadCloud, Loader2 } from 'lucide-react';
+import { UploadCloud, Loader2, Building, Compass, Globe, MapPin, CheckCircle } from 'lucide-react';
 import api from '../../services/api';
 
 const EmployerCompany = () => {
@@ -17,8 +15,6 @@ const EmployerCompany = () => {
   const [success, setSuccess] = useState('');
   const [isUploadingLogo, setIsUploadingLogo] = useState(false);
 
-  const [isInviteOpen, setIsInviteOpen] = useState(false);
-  const [newRecruiter, setNewRecruiter] = useState({ name: '', email: '', password: '' });
 
   const {
     register,
@@ -148,10 +144,10 @@ const EmployerCompany = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Company Card Header */}
         <div className="lg:col-span-1 space-y-6">
-          <Card className="text-center p-6 flex flex-col items-center">
-            <div className="w-24 h-24 rounded-2xl bg-brand-50 text-brand-500 flex items-center justify-center font-extrabold text-3xl shadow-md border border-slate-100 mb-4 overflow-hidden">
+          <Card bodyClassName="flex flex-col items-center justify-center text-center p-6">
+            <div className="w-24 h-24 mx-auto rounded-2xl bg-brand-50 text-brand-500 flex items-center justify-center font-extrabold text-3xl shadow-md border border-slate-100 mb-4 overflow-hidden">
               {company?.logo ? (
-                <img src={`${import.meta.env.VITE_API_URL || ''}${company.logo}`} alt="logo" className="w-full h-full object-cover" />
+                <img src={company.logo?.startsWith('http') ? company.logo : `${import.meta.env.VITE_API_URL || ''}${company.logo}`} alt="logo" className="w-full h-full object-contain p-2" />
               ) : (
                 company?.name?.charAt(0) || 'C'
               )}
@@ -286,63 +282,6 @@ const EmployerCompany = () => {
         </div>
       </div>
 
-      {company && (
-        <div className="pt-4">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Users size={20} className="text-brand-500" /> Recruiter Management
-              </h3>
-              <p className="text-sm text-slate-500">Invite and manage team members who can post jobs and interview candidates.</p>
-            </div>
-            <Button variant="outline" onClick={() => setIsInviteOpen(true)}>
-              <Plus size={16} className="mr-1.5" /> Invite Recruiter
-            </Button>
-          </div>
-          <Card>
-            <Table
-              columns={recruiterColumns}
-              data={company.recruiters || []}
-              emptyMessage="No recruiters invited yet. Invite your team to get started!"
-            />
-          </Card>
-        </div>
-      )}
-
-      {isInviteOpen && (
-        <Modal isOpen={isInviteOpen} onClose={() => setIsInviteOpen(false)} title="Invite Team Recruiter">
-          <form onSubmit={handleInviteRecruiter} className="space-y-4">
-            <Input
-              label="Full Name"
-              value={newRecruiter.name}
-              onChange={e => setNewRecruiter({ ...newRecruiter, name: e.target.value })}
-              required
-            />
-            <Input
-              label="Email Address"
-              type="email"
-              value={newRecruiter.email}
-              onChange={e => setNewRecruiter({ ...newRecruiter, email: e.target.value })}
-              required
-            />
-            <div className="space-y-1">
-              <Input
-                label="Initial Temporary Password"
-                type="text"
-                value={newRecruiter.password}
-                onChange={e => setNewRecruiter({ ...newRecruiter, password: e.target.value })}
-                required
-              />
-              <p className="text-xs text-slate-400">The recruiter will receive this password via email.</p>
-            </div>
-
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-              <Button variant="outline" type="button" onClick={() => setIsInviteOpen(false)}>Cancel</Button>
-              <Button type="submit" variant="primary">Send Invitation</Button>
-            </div>
-          </form>
-        </Modal>
-      )}
     </div>
   );
 };
