@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
+const compression = require('compression');
 
 // Make morgan optional so server startup doesn't crash if dependency is missing.
 let morgan;
@@ -89,6 +90,7 @@ const { globalLimiter } = require('./middleware/rateLimiter');
 app.use(helmet({
   crossOriginResourcePolicy: false
 }));
+app.use(compression());
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
