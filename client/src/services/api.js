@@ -1,5 +1,20 @@
+const getBaseUrl = () => {
+  const envUrl = import.meta.env.VITE_API_URL;
+  if (!envUrl) return 'http://localhost:5000/api';
+  
+  // Clean trailing slashes
+  let cleanUrl = envUrl.replace(/\/+$/, '');
+  
+  // If the user accidentally included /api in the environment variable, don't duplicate it
+  if (cleanUrl.endsWith('/api')) {
+    return cleanUrl;
+  }
+  
+  return cleanUrl + '/api';
+};
+
 const api = {
-  baseURL: (import.meta.env.VITE_API_URL || 'http://localhost:5000') + '/api',
+  baseURL: getBaseUrl(),
 
   async request(endpoint, options = {}) {
     const url = `${this.baseURL}${endpoint}`;

@@ -39,7 +39,12 @@ const resetState = () => {
 resetState();
 
 mockRequire(userModelPath, {
-  findById: async (id) => users[id] || null,
+  findById: (id) => {
+    const user = users[id] || null;
+    const query = Promise.resolve(user);
+    query.lean = () => Promise.resolve(user);
+    return query;
+  },
 });
 
 mockRequire(applicationModelPath, {

@@ -3,17 +3,17 @@ const router = express.Router();
 const authController = require('./auth.controller');
 const { validateSignup, validateLogin } = require('./auth.validation');
 const { protect, authorize } = require('../../middleware/authMiddleware');
-const { authLimiter } = require('../../middleware/rateLimiter');
+const { authLimiter, otpLimiter } = require('../../middleware/rateLimiter');
 
 // Public
 router.post('/signup', authLimiter, validateSignup, authController.signup);
 router.post('/login', authLimiter, validateLogin, authController.login);
 router.post('/refresh', authLimiter, authController.refresh);
 router.get('/public/:id', authController.getPublicProfile);
-router.post('/verify-otp', authLimiter, authController.verifyOTP);
-router.post('/resend-otp', authLimiter, authController.resendOTP);
-router.post('/forgot-password', authLimiter, authController.forgotPassword);
-router.post('/reset-password/:token', authLimiter, authController.resetPassword);
+router.post('/verify-otp', otpLimiter, authController.verifyOTP);
+router.post('/resend-otp', otpLimiter, authController.resendOTP);
+router.post('/forgot-password', otpLimiter, authController.forgotPassword);
+router.post('/reset-password/:token', otpLimiter, authController.resetPassword);
 
 // Protected (Candidates/Employers/Recruiters/Admins)
 router.post('/logout', protect, authController.logout);

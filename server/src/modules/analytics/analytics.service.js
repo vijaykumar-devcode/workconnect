@@ -5,36 +5,79 @@ const Interview = require('../interviews/interview.model');
 const Offer = require('../offers/offer.model');
 const Company = require('../companies/company.model');
 
+const buildMonthlySeries = async (Model, startDate, endDate, valueKey) => {
+  const rows = await Model.aggregate([
+    {
+      $match: {
+        createdAt: {
+          $gte: startDate,
+          $lt: endDate,
+        },
+      },
+    },
+    {
+      $group: {
+        _id: {
+          year: { $year: '$createdAt' },
+          month: { $month: '$createdAt' },
+        },
+        count: { $sum: 1 },
+      },
+    },
+    { $sort: { '_id.year': 1, '_id.month': 1 } },
+  ]);
+
+  const monthLabels = [];
+  const cursor = new Date(startDate);
+  while (cursor < endDate) {
+    monthLabels.push({
+      year: cursor.getFullYear(),
+      month: cursor.getMonth() + 1,
+      label: cursor.toLocaleString('en-US', { month: 'short' }),
+    });
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+
+  const series = monthLabels.map(({ year, month, label }) => {
+    const match = rows.find((row) => row._id.year === year && row._id.month === month);
+    return {
+      month: label,
+      [valueKey]: match ? match.count : 0,
+    };
+  });
+
+  return series;
+};
+
 class AnalyticsService {
   async getAdminAnalytics() {
-    const totalUsers = await User.countDocuments();
-    const totalCandidates = await User.countDocuments({ role: 'CANDIDATE' });
-    const totalRecruiters = await User.countDocuments({ role: 'RECRUITER' });
-    const totalEmployers = await User.countDocuments({ role: 'EMPLOYER' });
+    const endDate = new Date();
+    const startDate = new Date(endDate);
+    startDate.setMonth(startDate.getMonth() - 5);
+    startDate.setDate(1);
+    startDate.setHours(0, 0, 0, 0);
 
-    const totalJobs = await Job.countDocuments();
-    const activeJobs = await Job.countDocuments({ status: 'Published' });
-    const totalApplications = await Application.countDocuments();
-
-    // Mock revenue history
-    const revenueAnalytics = [
-      { month: 'Jan', revenue: 4500 },
-      { month: 'Feb', revenue: 5800 },
-      { month: 'Mar', revenue: 6200 },
-      { month: 'Apr', revenue: 8500 },
-      { month: 'May', revenue: 9400 },
-      { month: 'Jun', revenue: 12000 }
-    ];
-
-    // Mock User growth
-    const userGrowth = [
-      { month: 'Jan', users: 120 },
-      { month: 'Feb', users: 240 },
-      { month: 'Mar', users: 380 },
-      { month: 'Apr', users: 510 },
-      { month: 'May', users: 780 },
-      { month: 'Jun', users: 950 }
-    ];
+    const [
+      totalUsers,
+      totalCandidates,
+      totalRecruiters,
+      totalEmployers,
+      totalJobs,
+      activeJobs,
+      totalApplications,
+      signupTrend,
+      jobPostingTrend
+    ] = await Promise.all([
+      User.countDocuments(),
+      User.countDocuments({ role: 'CANDIDATE' }),
+      User.countDocuments({ role: 'RECRUITER' }),
+      User.countDocuments({ role: 'EMPLOYER' }),
+      Job.countDocuments(),
+      Job.countDocuments({ status: 'Published' }),
+      Application.countDocuments(),
+      buildMonthlySeries(User, startDate, endDate, 'users'),
+      buildMonthlySeries(Job, startDate, endDate, 'jobs')
+    ]);
 
     return {
       stats: {
@@ -46,8 +89,8 @@ class AnalyticsService {
         activeJobs,
         totalApplications
       },
-      revenueAnalytics,
-      userGrowth
+      signupTrend,
+      jobPostingTrend
     };
   }
 
@@ -57,19 +100,29 @@ class AnalyticsService {
       return { stats: { totalJobs: 0, totalApplications: 0, hires: 0 }, funnel: [] };
     }
 
-    const totalJobs = await Job.countDocuments({ company: company._id });
-    const publisherJobs = await Job.find({ company: company._id }).select('_id');
+    const [totalJobs, publisherJobs] = await Promise.all([
+      Job.countDocuments({ company: company._id }),
+      Job.find({ company: company._id }).select('_id')
+    ]);
     const jobIds = publisherJobs.map(j => j._id);
 
-    const totalApplications = await Application.countDocuments({ job: { $in: jobIds } });
-    const hires = await Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Hired' });
-
-    // Calculate hiring funnel
-    const applied = await Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Applied' });
-    const screening = await Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Screening' });
-    const shortlisted = await Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Shortlisted' });
-    const interviewed = await Application.countDocuments({ job: { $in: jobIds }, currentStage: { $regex: /Interview/i } });
-    const selected = await Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Selected' });
+    const [
+      totalApplications,
+      hires,
+      applied,
+      screening,
+      shortlisted,
+      interviewed,
+      selected
+    ] = await Promise.all([
+      Application.countDocuments({ job: { $in: jobIds } }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Hired' }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Applied' }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Screening' }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Shortlisted' }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: { $regex: /Interview/i } }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Selected' })
+    ]);
 
     const funnel = [
       { stage: 'Applied', count: applied },
@@ -96,9 +149,15 @@ class AnalyticsService {
     const jobIds = recruiterJobs.map(j => j._id);
 
     const totalAssignedJobs = recruiterJobs.length;
-    const activeInterviews = await Interview.countDocuments({ interviewer: userId, status: 'Scheduled' });
-    const candidatesScreened = await Application.countDocuments({ job: { $in: jobIds }, currentStage: { $ne: 'Applied' } });
-    const hiresMade = await Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Hired' });
+    const [
+      activeInterviews,
+      candidatesScreened,
+      hiresMade
+    ] = await Promise.all([
+      Interview.countDocuments({ interviewer: userId, status: 'Scheduled' }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: { $ne: 'Applied' } }),
+      Application.countDocuments({ job: { $in: jobIds }, currentStage: 'Hired' })
+    ]);
 
     return {
       stats: {
@@ -111,12 +170,18 @@ class AnalyticsService {
   }
 
   async getCandidateAnalytics(userId) {
-    const totalApplications = await Application.countDocuments({ candidate: userId });
-    const activeInterviews = await Interview.countDocuments({ candidate: userId, status: 'Scheduled' });
-    const offersReceived = await Offer.countDocuments({ candidate: userId });
+    const [
+      totalApplications,
+      activeInterviews,
+      offersReceived
+    ] = await Promise.all([
+      Application.countDocuments({ candidate: userId }),
+      Interview.countDocuments({ candidate: userId, status: 'Scheduled' }),
+      Offer.countDocuments({ candidate: userId })
+    ]);
 
-    const successRate = totalApplications > 0 
-      ? Math.round((offersReceived / totalApplications) * 100) 
+    const successRate = totalApplications > 0
+      ? Math.round((offersReceived / totalApplications) * 100)
       : 0;
 
     return {

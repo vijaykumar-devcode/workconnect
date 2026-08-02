@@ -99,7 +99,7 @@ const SidebarLayout = ({ children }) => {
 
       {/* Sidebar */}
       <aside
-        className={`fixed inset-y-0 left-0 bg-theme-surface border-r border-theme-border w-64 p-5 flex flex-col z-40 transform lg:transform-none transition-all duration-300 lg:static ${
+        className={`fixed inset-y-0 left-0 bg-theme-surface border-r border-theme-border shadow-[2px_0_12px_-2px_rgba(11,31,59,0.06)] w-64 p-5 flex flex-col z-40 transform lg:transform-none transition-all duration-300 lg:static ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         }`}
       >
@@ -148,26 +148,8 @@ const SidebarLayout = ({ children }) => {
           })}
         </nav>
 
-        {/* Footer actions */}
-        <div className="pt-4 border-t border-theme-border mt-6 space-y-2">
-          {/* Theme switcher */}
-          <button
-            onClick={toggleTheme}
-            className="w-full flex items-center gap-3.5 px-4.5 py-3 rounded-xl text-sm font-semibold text-theme-text-secondary hover:bg-theme-bg hover:text-theme-text-primary transition-all duration-200"
-          >
-            {theme === 'dark' ? (
-              <>
-                <SunIcon className="w-5 h-5" />
-                Light mode
-              </>
-            ) : (
-              <>
-                <MoonIcon className="w-5 h-5" />
-                Dark mode
-              </>
-            )}
-          </button>
-          
+        {/* Footer actions — only logout here; theme toggle lives in the top-right header */}
+        <div className="pt-4 border-t border-theme-border mt-6">
           <button
             onClick={handleLogout}
             className="w-full flex items-center gap-3.5 px-4.5 py-3 rounded-xl text-sm font-semibold text-theme-error hover:bg-theme-error/10 transition-colors"

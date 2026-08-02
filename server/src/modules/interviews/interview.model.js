@@ -20,10 +20,17 @@ const InterviewSchema = new mongoose.Schema(
     date: {
       type: Date,
       required: [true, 'Please schedule the interview date and time'],
+      validate: {
+        validator: function(value) {
+          return value > new Date();
+        },
+        message: 'Interview date must be in the future'
+      }
     },
     duration: {
       type: Number, // In minutes
       default: 45,
+      min: [1, 'Duration must be at least 1 minute']
     },
     link: {
       type: String, // Interview Video URL (Optional if INTERNAL_ROOM)
@@ -59,5 +66,12 @@ const InterviewSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Support recruiter and candidate analytics & dashboards with sorting
+InterviewSchema.index({ interviewer: 1, status: 1, date: 1 });
+InterviewSchema.index({ candidate: 1, status: 1, date: 1 });
+
+// Support quick interview lookup by application
+InterviewSchema.index({ application: 1, date: 1 });
 
 module.exports = mongoose.model('Interview', InterviewSchema);

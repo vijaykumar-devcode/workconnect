@@ -77,26 +77,40 @@ const uploadFile = asyncHandler(async (req, res, next) => {
     throw new AppError('No file uploaded', 400);
   }
 
-  // Normalize client-provided category variants to canonical ones
-  const rawCategory = req.body.category || req.query.category || req.headers['x-upload-category'];
-  if (!rawCategory) {
-    throw new AppError('Upload category is required', 400);
+  let fileUrl;
+  try {
+    // Normalize client-provided category variants to canonical ones
+    const rawCategory = req.body.category || req.query.category || req.headers['x-upload-category'];
+    if (!rawCategory) {
+      throw new AppError('Upload category is required', 400);
+    }
+
+    const category = normalizeCategory(rawCategory);
+    if (!category) {
+      throw new AppError('Invalid upload category provided', 400);
+    }
+
+    validateUpload(req.file, category);
+
+    const result = await uploadService.handleUpload(req.file, category);
+    fileUrl = result.fileUrl;
+  } finally {
+    if (req.file && req.file.path) {
+      try {
+        await require('fs').promises.unlink(req.file.path);
+      } catch (err) {
+        if (err.code !== 'ENOENT') {
+          require('../../utils/logger').error('Failed to cleanup temp file:', err);
+        }
+      }
+    }
   }
-
-  const category = normalizeCategory(rawCategory);
-  if (!category) {
-    throw new AppError('Invalid upload category provided', 400);
-  }
-
-  validateUpload(req.file, category);
-
-  const result = await uploadService.handleUpload(req.file, category);
 
   res.status(200).json({
     success: true,
     message: '',
     data: {
-      fileUrl: result.fileUrl
+      fileUrl
     }
   });
 });

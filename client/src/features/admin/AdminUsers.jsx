@@ -8,6 +8,7 @@ import Select from '../../components/ui/Select';
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [roleFilter, setRoleFilter] = useState('');
 
   useEffect(() => {
     loadUsers();
@@ -19,7 +20,7 @@ const AdminUsers = () => {
       const res = await api.get('/auth/users');
       if (res.success) setUsers(res.data.users);
     } catch (err) {
-      
+
     } finally {
       setLoading(false);
     }
@@ -77,6 +78,19 @@ const AdminUsers = () => {
     },
   ];
 
+  const uniqueRoles = Array.from(new Set(users.map(u => u.role))).filter(Boolean);
+  const roleOptions = [
+    { value: '', label: 'All Users' },
+    ...uniqueRoles.map(role => ({
+      value: role,
+      label: role.charAt(0).toUpperCase() + role.slice(1).toLowerCase()
+    }))
+  ];
+
+  const filteredUsers = roleFilter
+    ? users.filter(u => u.role === roleFilter)
+    : users;
+
   return (
     <div className="space-y-8">
       <div>
@@ -88,12 +102,29 @@ const AdminUsers = () => {
         </p>
       </div>
 
-      <Card title="System Accounts List">
+      <Card 
+        title="System Accounts List"
+        actions={
+          <div className="w-48">
+            <Select
+              placeholder="Filter by Category"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+              options={roleOptions}
+              className="!py-1.5 text-xs"
+            />
+          </div>
+        }
+      >
         <Table
           columns={userColumns}
-          data={users}
+          data={filteredUsers}
           loading={loading}
-          emptyMessage="No user accounts registered on this system."
+          emptyMessage={
+            roleFilter
+              ? "No users found matching the selected category."
+              : "No user accounts registered on this system."
+          }
         />
       </Card>
     </div>

@@ -2,8 +2,9 @@ const express = require('express');
 const router = express.Router();
 const supportController = require('./support.controller');
 const { protect, authorize } = require('../../middleware/authMiddleware');
+const { supportLimiter } = require('../../middleware/rateLimiter');
 
-router.post('/', protect, supportController.createTicket);
+router.post('/', protect, supportLimiter, supportController.createTicket);
 router.get('/my', protect, supportController.getMyTickets);
 router.post('/:ticketId/respond', protect, authorize('ADMIN'), supportController.respondToTicket);
 

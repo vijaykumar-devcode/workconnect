@@ -71,8 +71,8 @@ const CandidateProfile = () => {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Profile Card Banner */}
         <div className="lg:col-span-1 space-y-6 self-start">
-          <Card className="text-center p-6 flex flex-col items-center">
-            <div className="w-24 h-24 rounded-full bg-brand-50 text-brand-500 flex items-center justify-center font-extrabold text-3xl shadow-md border-4 border-white mb-4">
+          <Card className="p-6" bodyClassName="flex flex-col items-center text-center">
+            <div className="w-24 h-24 mx-auto rounded-full bg-brand-50 text-brand-500 flex items-center justify-center font-extrabold text-3xl shadow-md border-4 border-white mb-4">
               {user?.name?.charAt(0) || 'U'}
             </div>
             <h3 className="text-lg font-bold text-slate-800 tracking-tight leading-none mb-1">
@@ -81,8 +81,8 @@ const CandidateProfile = () => {
             <span className="text-xs uppercase font-bold text-slate-400 tracking-wider">
               {user?.role}
             </span>
-            <div className="w-full h-[1px] bg-slate-100 my-5" />
-            
+            <div className="w-full h-1px bg-slate-100 my-5" />
+
             <div className="w-full text-left space-y-3.5">
               <div className="flex items-center gap-3 text-slate-500 text-xs font-semibold">
                 <Mail size={16} />
@@ -138,7 +138,7 @@ const CandidateProfile = () => {
                 />
               </div>
 
-              <div className="w-full h-[1px] bg-slate-100 my-6" />
+              <div className="w-full h-1px bg-slate-100 my-6" />
 
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Professional details</h4>
 
@@ -170,7 +170,7 @@ const CandidateProfile = () => {
                 />
               </div>
 
-              <div className="w-full h-[1px] bg-slate-100 my-6" />
+              <div className="w-full h-1px bg-slate-100 my-6" />
 
               <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Resume & Skills</h4>
 
@@ -188,7 +188,7 @@ const CandidateProfile = () => {
               />
 
               {/* Education Array */}
-              <div className="w-full h-[1px] bg-slate-100 my-6" />
+              <div className="w-full h-1px bg-slate-100 my-6" />
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Education</h4>
                 <Button type="button" variant="outline" size="sm" onClick={() => appendEdu({ degree: '', institution: '', graduationYear: '' })}>
@@ -207,7 +207,7 @@ const CandidateProfile = () => {
               ))}
 
               {/* Projects Array */}
-              <div className="w-full h-[1px] bg-slate-100 my-6" />
+              <div className="w-full h-1px bg-slate-100 my-6" />
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Projects</h4>
                 <Button type="button" variant="outline" size="sm" onClick={() => appendProj({ title: '', description: '', technologies: '' })}>
@@ -228,7 +228,7 @@ const CandidateProfile = () => {
               ))}
 
               {/* Certifications Array */}
-              <div className="w-full h-[1px] bg-slate-100 my-6" />
+              <div className="w-full h-1px bg-slate-100 my-6" />
               <div className="flex items-center justify-between mb-4">
                 <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Certifications</h4>
                 <Button type="button" variant="outline" size="sm" onClick={() => appendCert({ name: '', issuer: '', issueDate: '' })}>

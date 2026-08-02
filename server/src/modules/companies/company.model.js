@@ -48,4 +48,7 @@ const CompanySchema = new mongoose.Schema(
   }
 );
 
+// Optimize owner lookups in auth/employer flows
+CompanySchema.index({ owner: 1 });
+
 module.exports = mongoose.model('Company', CompanySchema);

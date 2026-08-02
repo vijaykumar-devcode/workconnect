@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const AuditLogSchema = new mongoose.Schema(
+const AdminAuditLogSchema = new mongoose.Schema(
   {
     adminId: {
       type: mongoose.Schema.Types.ObjectId,
@@ -52,4 +52,4 @@ const AuditLogSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.models.AdminAuditLog || mongoose.model('AdminAuditLog', AuditLogSchema);
+module.exports = mongoose.models.AdminAuditLog || mongoose.model('AdminAuditLog', AdminAuditLogSchema);

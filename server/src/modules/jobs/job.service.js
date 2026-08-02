@@ -32,7 +32,8 @@ class JobService {
       throw new AppError('You must register a company profile before posting a job.', 400);
     }
     if (!company.isVerified) {
-      throw new AppError('Your company profile is pending verification. You can only create drafts.', 400);
+      // Force status to Draft if company is pending verification
+      jobData.status = 'Draft';
     }
 
     const job = await Job.create({
@@ -52,6 +53,11 @@ class JobService {
     }
 
     assertJobPublisherAccess(job, userId, 'modify');
+
+    const company = await Company.findOne({ owner: userId });
+    if (company && !company.isVerified && updateData.status === 'Published') {
+      updateData.status = 'Draft';
+    }
 
     // Assign updates
     Object.assign(job, updateData);

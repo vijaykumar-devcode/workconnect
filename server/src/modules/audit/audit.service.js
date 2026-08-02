@@ -1,4 +1,5 @@
-const AuditLog = require('./audit.model');
+const AdminAuditLog = require('./audit.model');
+const logger = require('../../utils/logger');
 
 class AuditService {
   /**
@@ -6,7 +7,7 @@ class AuditService {
    */
   async logAction({ adminId, adminName, action, entityType, entityId, details, metadata, ipAddress }) {
     try {
-      await AuditLog.create({
+      await AdminAuditLog.create({
         adminId,
         adminName,
         action,
@@ -17,7 +18,7 @@ class AuditService {
         ipAddress
       });
     } catch (error) {
-      console.error('Audit Logging Failed (Non-blocking):', error.message);
+      logger.error('Audit Logging Failed (Non-blocking):', error.message);
       // We do NOT throw here. Audit logging must not break the primary action.
     }
   }
@@ -38,7 +39,7 @@ class AuditService {
         { adminName: { $regex: filters.search, $options: 'i' } }
       ];
     }
-    
+
     // Date range
     if (filters.startDate || filters.endDate) {
       query.createdAt = {};
@@ -52,12 +53,12 @@ class AuditService {
 
     const sortOrder = filters.sort === 'oldest' ? 1 : -1;
 
-    const logs = await AuditLog.find(query)
+    const logs = await AdminAuditLog.find(query)
       .sort({ createdAt: sortOrder })
       .skip(skip)
       .limit(limit);
 
-    const total = await AuditLog.countDocuments(query);
+    const total = await AdminAuditLog.countDocuments(query);
 
     return {
       logs,

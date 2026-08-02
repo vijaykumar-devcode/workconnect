@@ -10,6 +10,9 @@ import ResetPassword from '../features/auth/ResetPassword';
 import CandidateDashboard from '../features/candidates/CandidateDashboard';
 import CandidateProfile from '../features/candidates/CandidateProfile';
 import PublicCandidateProfile from '../features/candidates/PublicCandidateProfile';
+import CandidateInterviews from '../features/candidates/CandidateInterviews';
+import CandidateOffers from '../features/candidates/CandidateOffers';
+import CandidateSupport from '../features/candidates/CandidateSupport';
 import EmployerDashboard from '../features/companies/EmployerDashboard';
 import EmployerCompany from '../features/companies/EmployerCompany';
 import EmployerTeam from '../features/companies/EmployerTeam';
@@ -70,7 +73,7 @@ const AppRoutes = () => {
         path="/candidate/search"
         element={
           <ProtectedRoute allowedRoles={['CANDIDATE']}>
-            <Landing />
+            <Landing hideNav={true} />
           </ProtectedRoute>
         }
       />
@@ -78,7 +81,7 @@ const AppRoutes = () => {
         path="/candidate/interviews"
         element={
           <ProtectedRoute allowedRoles={['CANDIDATE']}>
-            <CandidateDashboard />
+            <CandidateInterviews />
           </ProtectedRoute>
         }
       />
@@ -86,7 +89,7 @@ const AppRoutes = () => {
         path="/candidate/offers"
         element={
           <ProtectedRoute allowedRoles={['CANDIDATE']}>
-            <CandidateDashboard />
+            <CandidateOffers />
           </ProtectedRoute>
         }
       />
@@ -94,7 +97,7 @@ const AppRoutes = () => {
         path="/candidate/support"
         element={
           <ProtectedRoute allowedRoles={['CANDIDATE']}>
-            <CandidateDashboard />
+            <CandidateSupport />
           </ProtectedRoute>
         }
       />

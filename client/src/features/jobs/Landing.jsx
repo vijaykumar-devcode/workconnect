@@ -14,7 +14,7 @@ import Logo from '../../components/ui/Logo';
 import { useTheme } from '../../context/ThemeContext';
 import { MagnifyingGlassIcon, MapPinIcon, BriefcaseIcon, CurrencyDollarIcon, CalendarIcon } from '@heroicons/react/24/outline';
 
-const Landing = () => {
+const Landing = ({ hideNav = false }) => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const { jobs, loading } = useSelector((state) => state.jobs);
@@ -84,97 +84,114 @@ const Landing = () => {
 
   return (
     <div className="min-h-screen bg-theme-bg text-theme-text-primary flex flex-col font-sans transition-colors duration-200">
-      {/* Navbar */}
-      <header className="bg-theme-surface border-b border-theme-border px-6 lg:px-12 py-5 flex items-center justify-between shadow-sm sticky top-0 z-30 transition-colors duration-200">
-        <Link to="/" className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity">
-          {/* Logo brand icon on mobile, full logo on large screens */}
-          <Logo variant="icon-only" iconClassName="w-8 h-8 md:hidden" />
-          <Logo variant="full" theme={theme} iconClassName="w-8 h-8 hidden md:block" />
-        </Link>
-        <div className="flex items-center gap-4">
-          {isAuthenticated ? (
-            <Button
-              variant="primary"
-              onClick={() => {
-                const route = user?.role === 'CANDIDATE' ? '/candidate' : `/${user?.role?.toLowerCase()}`;
-                navigate(route);
-              }}
-            >
-              Dashboard
-            </Button>
-          ) : (
-            <>
-              <button
-                onClick={() => navigate('/login')}
-                className="text-sm font-semibold text-theme-text-secondary hover:text-brand-blue transition-colors"
+      {/* Navbar — hidden when rendered inside SidebarLayout */}
+      {!hideNav && (
+        <header className="bg-theme-surface border-b border-theme-border px-6 lg:px-12 py-5 flex items-center justify-between shadow-sm sticky top-0 z-30 transition-colors duration-200">
+          <Link to="/" className="flex items-center gap-2 cursor-pointer hover:opacity-90 transition-opacity">
+            {/* Logo brand icon on mobile, full logo on large screens */}
+            <Logo variant="icon-only" iconClassName="w-8 h-8 md:hidden" />
+            <Logo variant="full" theme={theme} iconClassName="w-8 h-8 hidden md:block" />
+          </Link>
+          <div className="flex items-center gap-4">
+            {isAuthenticated ? (
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const route = user?.role === 'CANDIDATE' ? '/candidate' : `/${user?.role?.toLowerCase()}`;
+                  navigate(route);
+                }}
               >
-                Sign In
-              </button>
-              <Button variant="primary" onClick={() => navigate('/signup')}>
-                Register Free
+                Dashboard
               </Button>
-            </>
-          )}
-        </div>
-      </header>
+            ) : (
+              <>
+                <button
+                  onClick={() => navigate('/login')}
+                  className="text-sm font-semibold text-theme-text-secondary hover:text-brand-blue transition-colors"
+                >
+                  Sign In
+                </button>
+                <Button variant="primary" onClick={() => navigate('/signup')}>
+                  Register Free
+                </Button>
+              </>
+            )}
+          </div>
+        </header>
+      )}
 
       {/* Hero Section */}
-      <section className="bg-gradient-to-b from-brand-blue/5 via-theme-bg to-theme-bg py-16 lg:py-24 px-6 text-center max-w-5xl mx-auto w-full">
-        <h1 className="text-4xl lg:text-6xl font-black tracking-tight leading-[1.1] mb-6">
-          Connecting Skilled Professionals with <span className="gradient-text">Meaningful Opportunities</span>
-        </h1>
-        <p className="text-lg text-theme-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed font-semibold">
-          Discover thousands of curated job listings, coordinate interviews, and build your career in our unified recruitment ecosystem.
-        </p>
+      <section className="relative overflow-hidden py-16 lg:py-24 px-6 text-center w-full">
+        {/* Decorative gradient blobs */}
+        <div className="pointer-events-none absolute inset-0 -z-0">
+          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-[700px] h-[420px] rounded-full bg-brand-blue/10 blur-[80px]" />
+          <div className="absolute top-8 left-0 w-72 h-72 rounded-full bg-brand-accent/8 blur-[60px]" />
+          <div className="absolute bottom-0 right-0 w-64 h-64 rounded-full bg-brand-secondary/8 blur-[70px]" />
+        </div>
 
-        {/* Search Bar */}
-        <form
-          onSubmit={handleSearch}
-          className="bg-theme-surface p-3 rounded-2xl border border-theme-border shadow-xl max-w-4xl mx-auto flex flex-col md:flex-row gap-2.5 transition-colors"
-        >
-          <div className="flex-1 flex items-center gap-2.5 px-3 border-b md:border-b-0 md:border-r border-theme-border pb-2 md:pb-0">
-            <MagnifyingGlassIcon className="w-5 h-5 text-theme-text-secondary" />
-            <input
-              type="text"
-              placeholder="Search keyword (e.g. React, Manager)..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full py-2 bg-transparent outline-none text-theme-text-primary placeholder:text-theme-text-secondary/70 text-sm"
-            />
+        <div className="relative z-10 max-w-5xl mx-auto">
+          {/* Eyebrow badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand-blue/10 border border-brand-blue/20 text-brand-blue text-xs font-bold uppercase tracking-widest mb-6">
+            <span className="w-1.5 h-1.5 rounded-full bg-brand-blue animate-pulse" />
+            Unified Recruitment Ecosystem
           </div>
 
-          <div className="w-full md:w-48 px-3 border-b md:border-b-0 md:border-r border-theme-border pb-2 md:pb-0 flex items-center">
-            <Select
-              placeholder="Work Mode"
-              options={[
-                { value: 'Remote', label: 'Remote' },
-                { value: 'Hybrid', label: 'Hybrid' },
-                { value: 'Onsite', label: 'Onsite' }
-              ]}
-              value={workMode}
-              onChange={(e) => setWorkMode(e.target.value)}
-              className="!border-none !bg-transparent !p-0 !ring-0 focus:ring-0 w-full"
-            />
-          </div>
+          <h1 className="text-4xl lg:text-6xl font-black tracking-tight leading-[1.1] mb-6">
+            Connecting Skilled Professionals with{' '}<span className="gradient-text">Meaningful Opportunities</span>
+          </h1>
+          <p className="text-lg text-theme-text-secondary max-w-2xl mx-auto mb-10 leading-relaxed font-semibold">
+            Discover thousands of curated job listings, coordinate interviews, and build your career in our unified recruitment ecosystem.
+          </p>
 
-          <div className="w-full md:w-48 px-3 flex items-center">
-            <Select
-              placeholder="Employment"
-              options={[
-                { value: 'Full-Time', label: 'Full-Time' },
-                { value: 'Part-Time', label: 'Part-Time' },
-                { value: 'Contract', label: 'Contract' }
-              ]}
-              value={employmentType}
-              onChange={(e) => setEmploymentType(e.target.value)}
-              className="!border-none !bg-transparent !p-0 !ring-0 focus:ring-0 w-full"
-            />
-          </div>
+          {/* Search Bar */}
+          <form
+            onSubmit={handleSearch}
+            className="bg-theme-surface p-3 rounded-2xl border border-theme-border shadow-xl shadow-brand-blue/5 max-w-4xl mx-auto flex flex-col md:flex-row gap-2.5 transition-colors"
+          >
+            <div className="flex-1 flex items-center gap-2.5 px-3 border-b md:border-b-0 md:border-r border-theme-border pb-2 md:pb-0">
+              <MagnifyingGlassIcon className="w-5 h-5 text-theme-text-secondary shrink-0" />
+              <input
+                type="text"
+                placeholder="Search keyword (e.g. React, Manager)..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full py-2 bg-transparent outline-none text-theme-text-primary placeholder:text-theme-text-secondary/70 text-sm"
+              />
+            </div>
 
-          <Button type="submit" variant="primary" className="!py-3 px-6">
-            Find Jobs
-          </Button>
-        </form>
+            <div className="w-full md:w-44 px-3 border-b md:border-b-0 md:border-r border-theme-border pb-2 md:pb-0 flex items-center">
+              <Select
+                placeholder="Work Mode"
+                options={[
+                  { value: 'Remote', label: 'Remote' },
+                  { value: 'Hybrid', label: 'Hybrid' },
+                  { value: 'Onsite', label: 'Onsite' }
+                ]}
+                value={workMode}
+                onChange={(e) => setWorkMode(e.target.value)}
+                className="border-none! bg-transparent! p-0! ring-0! focus:ring-0 w-full"
+              />
+            </div>
+
+            <div className="w-full md:w-44 px-3 flex items-center">
+              <Select
+                placeholder="Employment"
+                options={[
+                  { value: 'Full-Time', label: 'Full-Time' },
+                  { value: 'Part-Time', label: 'Part-Time' },
+                  { value: 'Contract', label: 'Contract' }
+                ]}
+                value={employmentType}
+                onChange={(e) => setEmploymentType(e.target.value)}
+                className="border-none! bg-transparent! p-0! ring-0! focus:ring-0 w-full"
+              />
+            </div>
+
+            <Button type="submit" variant="primary" className="py-3! px-6 shrink-0">
+              Find Jobs
+            </Button>
+          </form>
+        </div>
       </section>
 
       {/* Main Jobs Listing */}
@@ -198,7 +215,7 @@ const Landing = () => {
             {jobs.map((job) => (
               <Card
                 key={job._id}
-                className="hover:translate-y-[-4px] transition-all duration-300 cursor-pointer flex flex-col justify-between"
+                className="hover:-translate-y-1 transition-all duration-300 cursor-pointer flex flex-col justify-between"
                 bodyClassName="flex flex-col justify-between h-full"
               >
                 <div onClick={() => setSelectedJob(job)}>
@@ -214,7 +231,7 @@ const Landing = () => {
                       <h4 className="text-xs font-bold text-theme-text-secondary uppercase tracking-wide">
                         {job.company?.name}
                       </h4>
-                      <h3 className="text-base font-bold text-theme-text-primary tracking-tight leading-snug truncate max-w-[200px]">
+                      <h3 className="text-base font-bold text-theme-text-primary tracking-tight leading-snug truncate max-w-50">
                         {job.title}
                       </h3>
                     </div>

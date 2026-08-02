@@ -2,6 +2,7 @@ const Company = require('./company.model');
 const User = require('../auth/user.model');
 const { AppError } = require('../../middleware/errorHandler');
 const emailService = require('../../services/emailService');
+const { getRedisClient } = require('../../services/redisClient');
 
 
 
@@ -41,25 +42,11 @@ class CompanyService {
 
     const isAuthorizedFullAccess = user?.role === 'ADMIN' || ownerId === userId || userCompanyId === company._id.toString();
 
-    if (isAuthorizedFullAccess) {
-      return company;
+    if (!isAuthorizedFullAccess) {
+      throw new AppError('You are not authorized to access this company', 403);
     }
 
-    // Public DTO for candidates or unassociated users
-    return {
-      _id: company._id,
-      name: company.name,
-      logo: company.logo,
-      description: company.description,
-      industry: company.industry,
-      website: company.website,
-      location: company.location,
-      benefits: company.benefits,
-      gallery: company.gallery,
-      isVerified: company.isVerified,
-      createdAt: company.createdAt,
-      updatedAt: company.updatedAt
-    };
+    return company;
   }
 
   async updateCompany(userId, updateData) {
@@ -129,12 +116,25 @@ class CompanyService {
       throw new AppError('Company not found', 404);
     }
 
+    // Verify that the recruiter actually belongs to this company
+    const isRecruiterForCompany = company.recruiters.some(r => r.toString() === recruiterId.toString());
+    if (!isRecruiterForCompany) {
+      throw new AppError('You do not have permission to remove this user', 403);
+    }
+
     // Delete or suspend user
     await User.findByIdAndDelete(recruiterId);
 
     // Remove from company recruiters list
     company.recruiters = company.recruiters.filter(r => r.toString() !== recruiterId);
     await company.save();
+
+    const redisClient = getRedisClient();
+    if (redisClient) {
+      try {
+        await redisClient.del(`workconnect:user:${recruiterId}`);
+      } catch (err) {}
+    }
 
     return true;
   }

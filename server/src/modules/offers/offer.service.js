@@ -202,7 +202,10 @@ class OfferService {
     }
 
     return await Offer.find(query)
-      .populate('application')
+      .populate({
+        path: 'application',
+        populate: { path: 'job', populate: { path: 'company' } }
+      })
       .populate('candidate', 'name email')
       .sort({ createdAt: -1 });
   }

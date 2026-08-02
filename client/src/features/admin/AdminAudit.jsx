@@ -99,7 +99,7 @@ const AdminAudit = () => {
             onChange={handleFilterChange}
             label="Search"
           />
-          
+
           <div>
             <label className="text-xs font-bold text-slate-400 uppercase tracking-wide block mb-1">Action Type</label>
             <select name="actionType" value={filters.actionType} onChange={handleFilterChange} className="form-input !py-2.5">

@@ -7,8 +7,8 @@ import { Users, Building, Briefcase, FileText } from 'lucide-react';
 const AdminDashboard = () => {
   const [analytics, setAnalytics] = useState({
     stats: { totalUsers: 0, totalCandidates: 0, totalRecruiters: 0, totalEmployers: 0, totalJobs: 0, activeJobs: 0, totalApplications: 0 },
-    revenueAnalytics: [],
-    userGrowth: []
+    signupTrend: [],
+    jobPostingTrend: []
   });
 
   useEffect(() => {
@@ -22,7 +22,7 @@ const AdminDashboard = () => {
           setAnalytics(res.data);
         }
       })
-      
+
   };
 
   return (
@@ -58,29 +58,29 @@ const AdminDashboard = () => {
 
       {/* Analytics Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card title="Monthly Subscription Revenue stream" subtitle="WorkConnect Corporate Premium Plans ($)">
+        <Card title="Monthly User Signups" subtitle="Candidate and employer registrations">
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={analytics.revenueAnalytics}>
+              <AreaChart data={analytics.signupTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} fontWeight={600} />
                 <YAxis stroke="#94a3b8" fontSize={11} fontWeight={600} />
                 <Tooltip />
-                <Area type="monotone" dataKey="revenue" stroke="#4f6eff" fillOpacity={0.1} fill="#4f6eff" strokeWidth={2.5} />
+                <Area type="monotone" dataKey="users" stroke="#4f6eff" fillOpacity={0.1} fill="#4f6eff" strokeWidth={2.5} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
         </Card>
 
-        <Card title="User Growth analytics" subtitle="Active Candidate & Employer Signups">
+        <Card title="Monthly Job Postings" subtitle="Published opportunities across the platform">
           <div className="h-64 mt-4">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={analytics.userGrowth}>
+              <AreaChart data={analytics.jobPostingTrend}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} fontWeight={600} />
                 <YAxis stroke="#94a3b8" fontSize={11} fontWeight={600} />
                 <Tooltip />
-                <Area type="monotone" dataKey="users" stroke="#6366f1" fillOpacity={0.1} fill="#6366f1" strokeWidth={2.5} />
+                <Area type="monotone" dataKey="jobs" stroke="#6366f1" fillOpacity={0.1} fill="#6366f1" strokeWidth={2.5} />
               </AreaChart>
             </ResponsiveContainer>
           </div>

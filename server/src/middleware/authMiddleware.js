@@ -23,10 +23,29 @@ const protect = asyncHandler(async (req, res, next) => {
     // Verify token
     const decoded = jwt.verify(token, JWT_SECRET);
 
-    // Check if user still exists
-    const currentUser = await User.findById(decoded.id);
+    // Check Redis Cache first
+    const { getRedisClient } = require('../services/redisClient');
+    const redisClient = getRedisClient();
+    let currentUser;
+    const cacheKey = `workconnect:user:${decoded.id}`;
+
+    if (redisClient) {
+      const cachedUser = await redisClient.get(cacheKey);
+      if (cachedUser) {
+        currentUser = JSON.parse(cachedUser);
+      }
+    }
+
     if (!currentUser) {
-      throw new AppError('The user belonging to this token no longer exists.', 401);
+      // Check if user still exists in DB
+      currentUser = await User.findById(decoded.id).lean();
+      if (!currentUser) {
+        throw new AppError('The user belonging to this token no longer exists.', 401);
+      }
+      if (redisClient) {
+        // Cache user for 5 minutes
+        await redisClient.set(cacheKey, JSON.stringify(currentUser), 'EX', 300);
+      }
     }
 
     // Check status
@@ -41,6 +60,7 @@ const protect = asyncHandler(async (req, res, next) => {
     req.user = currentUser;
     next();
   } catch (err) {
+    console.error('AUTH_MIDDLEWARE_ERROR:', err);
     throw new AppError('Invalid token or token expired.', 401);
   }
 });
@@ -61,7 +81,24 @@ const optionalAuth = asyncHandler(async (req, res, next) => {
 
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
-    const currentUser = await User.findById(decoded.id);
+    const { getRedisClient } = require('../services/redisClient');
+    const redisClient = getRedisClient();
+    let currentUser;
+    const cacheKey = `workconnect:user:${decoded.id}`;
+
+    if (redisClient) {
+      const cachedUser = await redisClient.get(cacheKey);
+      if (cachedUser) {
+        currentUser = JSON.parse(cachedUser);
+      }
+    }
+
+    if (!currentUser) {
+      currentUser = await User.findById(decoded.id).lean();
+      if (currentUser && redisClient) {
+        await redisClient.set(cacheKey, JSON.stringify(currentUser), 'EX', 300);
+      }
+    }
     
     if (currentUser && currentUser.status !== 'SUSPENDED' && currentUser.status !== 'BANNED') {
       req.user = currentUser;

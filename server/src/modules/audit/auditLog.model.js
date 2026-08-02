@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const AuditLogSchema = new mongoose.Schema(
+const InterviewAuditLogSchema = new mongoose.Schema(
   {
     interview: {
       type: mongoose.Schema.Types.ObjectId,
@@ -27,4 +27,4 @@ const AuditLogSchema = new mongoose.Schema(
   }
 );
 
-module.exports = mongoose.models.InterviewAuditLog || mongoose.model('InterviewAuditLog', AuditLogSchema);
+module.exports = mongoose.models.InterviewAuditLog || mongoose.model('InterviewAuditLog', InterviewAuditLogSchema);

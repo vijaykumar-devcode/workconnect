@@ -1,4 +1,5 @@
 const fs = require('fs');
+const fsPromises = require('fs').promises;
 const path = require('path');
 
 class LocalProvider {
@@ -19,7 +20,7 @@ class LocalProvider {
 
     // Ensure folders exist
     if (!fs.existsSync(targetFolder)) {
-      fs.mkdirSync(targetFolder, { recursive: true });
+      await fsPromises.mkdir(targetFolder, { recursive: true });
     }
 
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
@@ -27,8 +28,13 @@ class LocalProvider {
     const filename = `${file.fieldname}-${uniqueSuffix}${ext}`;
     const filePath = path.join(targetFolder, filename);
 
-    // Save buffer
-    fs.writeFileSync(filePath, file.buffer);
+    // Move file asynchronously
+    if (file.path) {
+      await fsPromises.copyFile(file.path, filePath);
+      await fsPromises.unlink(file.path);
+    } else {
+      await fsPromises.writeFile(filePath, file.buffer);
+    }
 
     // Return URL relative path
     const fileUrl = `/uploads/${folder}/${filename}`;

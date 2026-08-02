@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
+const { initEmailQueue, addEmailJob } = require('./emailQueue');
 
 class EmailService {
   constructor() {
@@ -29,32 +30,34 @@ class EmailService {
       this.transporter = null;
       logger.info('✉️ Email Service Initialized: Simulation Mode Active (No credentials)');
     }
+
+    // Initialize the bullmq queue and worker, binding the inner dispatch method
+    initEmailQueue(this._dispatchMail.bind(this));
   }
 
   async sendMail({ to, subject, html }) {
-    try {
-      if (this.transporter) {
-        await this.transporter.sendMail({
-          from: `"WorkConnect Team" <${this.from}>`,
-          to,
-          subject,
-          html,
-        });
-        logger.info(`✉️ Email successfully dispatched to: ${to}`);
-      } else {
-        // Fallback simulation mode
-        logger.info('----------------------------------------------------');
-        logger.info(`✉️ SIMULATED EMAIL DISPATCH:`);
-        logger.info(`To: ${to}`);
-        logger.info(`Subject: ${subject}`);
-        logger.info(`Content:\n${html.replace(/<[^>]*>/g, ' ').substring(0, 300)}...`);
-        logger.info('----------------------------------------------------');
-      }
-      return true;
-    } catch (error) {
-      // Failure safety constraint
-      console.error('💥 EMAIL DISPATCH FAILURE:', error.message);
-      return false; // Return false but do NOT throw to avoid breaking application workflows
+    // Add job to the BullMQ queue
+    await addEmailJob({ to, subject, html });
+    return true;
+  }
+
+  async _dispatchMail({ to, subject, html }) {
+    if (this.transporter) {
+      await this.transporter.sendMail({
+        from: `"WorkConnect Team" <${this.from}>`,
+        to,
+        subject,
+        html,
+      });
+      logger.info(`✉️ Email successfully dispatched to: ${to}`);
+    } else {
+      // Fallback simulation mode
+      logger.info('----------------------------------------------------');
+      logger.info(`✉️ SIMULATED EMAIL DISPATCH:`);
+      logger.info(`To: ${to}`);
+      logger.info(`Subject: ${subject}`);
+      logger.info(`Content:\n${html.replace(/<[^>]*>/g, ' ').substring(0, 300)}...`);
+      logger.info('----------------------------------------------------');
     }
   }
 
@@ -146,10 +149,10 @@ class EmailService {
 
   approvalEmail(user, companyName, isApproved) {
     const status = isApproved ? 'Approved' : 'Rejected';
-    const msg = isApproved 
+    const msg = isApproved
       ? `Congratulations! Your corporate profile for **${companyName}** has been verified by the Admin panel. You can now post live job vacancies and source applicants.`
       : `We regret to inform you that your company verification registration for **${companyName}** was not approved at this time. Please contact support.`;
-    
+
     const html = `
       <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e6eef9; border-radius: 16px;">
         <h2 style="color: #0b1f3b;">Company Registration Status: ${status}</h2>

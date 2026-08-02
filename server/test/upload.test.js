@@ -13,16 +13,17 @@ const userModelPath = path.join(__dirname, '..', 'src', 'modules', 'auth', 'user
 const uploadServicePath = path.join(__dirname, '..', 'src', 'services', 'uploadService.js');
 
 mockRequire(userModelPath, {
-  findById: async (id) => {
-    if (id !== 'user-1') return null;
-
-    return {
+  findById: (id) => {
+    const user = id === 'user-1' ? {
       _id: 'user-1',
       status: 'ACTIVE',
       role: 'CANDIDATE',
       name: 'Test Candidate',
       email: 'candidate@example.com',
-    };
+    } : null;
+    const query = Promise.resolve(user);
+    query.lean = () => Promise.resolve(user);
+    return query;
   },
 });
 

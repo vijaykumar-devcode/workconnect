@@ -15,6 +15,7 @@ const OfferSchema = new mongoose.Schema(
     salary: {
       type: Number,
       required: [true, 'Please specify the offered base salary'],
+      min: [1, 'Salary must be greater than 0'],
     },
     bonus: {
       type: Number,
@@ -45,5 +46,9 @@ const OfferSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
+
+// Indexes to support candidate and application offer fetching with sorting
+OfferSchema.index({ candidate: 1, createdAt: -1 });
+OfferSchema.index({ application: 1, createdAt: -1 });
 
 module.exports = mongoose.model('Offer', OfferSchema);

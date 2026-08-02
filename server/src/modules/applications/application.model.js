@@ -88,4 +88,10 @@ const ApplicationSchema = new mongoose.Schema(
 // Prevent duplicate applications by same candidate to same job
 ApplicationSchema.index({ job: 1, candidate: 1 }, { unique: true });
 
+// Support employer analytics funnel
+ApplicationSchema.index({ job: 1, currentStage: 1 });
+
+// Support candidate dashboard fetching with sorting
+ApplicationSchema.index({ candidate: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Application', ApplicationSchema);

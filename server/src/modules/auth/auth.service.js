@@ -3,7 +3,18 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const { AppError } = require('../../middleware/errorHandler');
 const emailService = require('../../services/emailService');
+const otpStore = require('../../services/otpStore');
 const { requireJwtSecret } = require('../../utils/jwtSecrets');
+const { getRedisClient } = require('../../services/redisClient');
+
+const invalidateUserCache = async (userId) => {
+  const redisClient = getRedisClient();
+  if (redisClient) {
+    try {
+      await redisClient.del(`workconnect:user:${userId}`);
+    } catch (err) {}
+  }
+};
 
 const JWT_SECRET = requireJwtSecret('JWT_SECRET');
 const JWT_REFRESH_SECRET = requireJwtSecret('JWT_REFRESH_SECRET');
@@ -27,27 +38,31 @@ const generateRefreshToken = (userId) => {
 class AuthService {
   async signup(userData) {
     const { name, email, password, role } = userData;
+    const normalizedEmail = email.trim().toLowerCase();
 
     // Check if email already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       throw new AppError('Email already registered', 400);
     }
 
-    // Generate 6-digit OTP
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+    const otp = otpStore.generateOtp();
 
     const user = await User.create({
       name,
-      email,
+      email: normalizedEmail,
       password,
       role: role || 'CANDIDATE',
       status: 'ACTIVE',
       isEmailVerified: false,
-      otp,
-      otpExpires
     });
+
+    const storedInRedis = await otpStore.setOtp(normalizedEmail, otp);
+    if (!storedInRedis) {
+      user.otp = otp;
+      user.otpExpires = Date.now() + otpStore.OTP_TTL_SECONDS * 1000;
+      await user.save();
+    }
 
     // Trigger Welcome & OTP Email
     await emailService.welcomeEmail(user);
@@ -62,7 +77,7 @@ class AuthService {
 
 
   async login(email, password) {
-    const user = await User.findOne({ email }).select('+password +isEmailVerified');
+    const user = await User.findOne({ email: email.trim().toLowerCase() }).select('+password +isEmailVerified');
     if (!user || !(await user.comparePassword(password))) {
       throw new AppError('Incorrect email or password', 401);
     }
@@ -124,7 +139,8 @@ class AuthService {
   }
 
   async verifyOTP(email, otp) {
-    const user = await User.findOne({ email }).select('+otp +otpExpires');
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpires');
     if (!user) {
       throw new AppError('User not found', 404);
     }
@@ -133,7 +149,16 @@ class AuthService {
       throw new AppError('Email is already verified', 400);
     }
 
-    if (user.otp !== otp || user.otpExpires < Date.now()) {
+    const redisOtpHash = await otpStore.getOtpHash(normalizedEmail);
+    const otpMatchedInRedis = redisOtpHash && redisOtpHash === otpStore.hashOtp(otp);
+    const otpMatchedInMongo = user.otp && user.otp === otp && user.otpExpires && user.otpExpires >= Date.now();
+
+    if (!otpMatchedInRedis && !otpMatchedInMongo) {
+      const attempts = await otpStore.recordOtpAttempt(normalizedEmail);
+      if (attempts && attempts >= otpStore.OTP_MAX_ATTEMPTS) {
+        await otpStore.deleteOtp(normalizedEmail);
+        throw new AppError('Too many invalid OTP attempts. Please request a new OTP.', 429);
+      }
       throw new AppError('Invalid or expired OTP', 400);
     }
 
@@ -146,12 +171,15 @@ class AuthService {
     user.refreshToken = refreshToken;
 
     await user.save();
+    await otpStore.deleteOtp(normalizedEmail);
+    await invalidateUserCache(user._id);
 
     return { user, accessToken, refreshToken };
   }
 
   async resendOTP(email) {
-    const user = await User.findOne({ email });
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await User.findOne({ email: normalizedEmail }).select('+otp +otpExpires');
     if (!user) {
       throw new AppError('User not found', 404);
     }
@@ -160,17 +188,31 @@ class AuthService {
       throw new AppError('Email is already verified', 400);
     }
 
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-    user.otp = otp;
-    user.otpExpires = Date.now() + 10 * 60 * 1000;
-    await user.save();
+    const canResend = await otpStore.canResendOtp(normalizedEmail);
+    if (!canResend) {
+      throw new AppError('Please wait before requesting a new OTP.', 429);
+    }
 
+    const otp = otpStore.generateOtp();
+    const storedInRedis = await otpStore.setOtp(normalizedEmail, otp);
+
+    if (!storedInRedis) {
+      user.otp = otp;
+      user.otpExpires = Date.now() + otpStore.OTP_TTL_SECONDS * 1000;
+      await user.save();
+    } else {
+      user.otp = undefined;
+      user.otpExpires = undefined;
+      await user.save();
+    }
+
+    await otpStore.markOtpResendCooldown(normalizedEmail);
     await emailService.otpEmail(user, otp);
     return { message: 'A new OTP has been sent to your email.' };
   }
 
   async forgotPassword(email) {
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
     if (!user) {
       throw new AppError('There is no user with that email address', 404);
     }
@@ -207,12 +249,14 @@ class AuthService {
     user.resetPasswordToken = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
+    await invalidateUserCache(user._id);
 
     return { message: 'Password has been reset successfully. Please login.' };
   }
 
   async logout(userId) {
     await User.findByIdAndUpdate(userId, { refreshToken: null });
+    await invalidateUserCache(userId);
     return true;
   }
 
@@ -231,6 +275,8 @@ class AuthService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
+
+    await invalidateUserCache(userId);
 
     return user;
   }
@@ -281,6 +327,8 @@ class AuthService {
     if (!user) {
       throw new AppError('User not found', 404);
     }
+
+    await invalidateUserCache(userId);
 
     return user;
   }

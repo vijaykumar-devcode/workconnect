@@ -43,3 +43,8 @@ lerna-debug.log*
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+uploads/
+*.log
+test-output.txt
+out.txt

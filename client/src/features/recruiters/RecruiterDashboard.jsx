@@ -13,6 +13,8 @@ import Table from '../../components/ui/Table';
 import Modal from '../../components/ui/Modal';
 import OnboardingReviewModal from '../applications/OnboardingReviewModal';
 import { Briefcase, Users, Star, ClipboardCheck, Calendar, Search, SlidersHorizontal, MessageSquare, FileText } from 'lucide-react';
+import RecruiterStatsCards from './components/RecruiterStatsCards';
+import RecruiterJobsPanel from './components/RecruiterJobsPanel';
 
 const RecruiterDashboard = () => {
   const dispatch = useDispatch();
@@ -35,12 +37,14 @@ const RecruiterDashboard = () => {
   const [roomType, setRoomType] = useState('EXTERNAL');
 
   const [stats, setStats] = useState({ totalAssignedJobs: 0, activeInterviews: 0, candidatesScreened: 0, hiresMade: 0 });
+  const [scheduleSuccess, setScheduleSuccess] = useState('');
+  const [scheduleError, setScheduleError] = useState('');
 
   useEffect(() => {
     dispatch(fetchJobs({ assignedRecruiter: user._id }));
     dispatch(fetchApplications());
     loadAnalytics();
-  }, [dispatch]);
+  }, [dispatch, user._id]);
 
   const loadAnalytics = () => {
     api.get('/analytics')
@@ -49,7 +53,7 @@ const RecruiterDashboard = () => {
           setStats(res.data.stats);
         }
       })
-      
+
   };
 
   const handleStageChange = async (appId, nextStage) => {
@@ -82,6 +86,7 @@ const RecruiterDashboard = () => {
 
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
+    setScheduleError('');
     try {
       await dispatch(scheduleInterview({
         applicationId: activeApp._id,
@@ -91,14 +96,16 @@ const RecruiterDashboard = () => {
         type: interviewFormat,
         roomType
       })).unwrap();
+      // Close modal and show success banner IMMEDIATELY — no alert() delay
       setIsScheduleOpen(false);
       setInterviewLink('');
       setInterviewDate('');
       setRoomType('EXTERNAL');
+      setScheduleSuccess(`Interview scheduled for ${activeApp.candidate?.name}! Candidate has been notified via WorkConnect alerts.`);
+      setTimeout(() => setScheduleSuccess(''), 5000);
       dispatch(fetchApplications());
-      alert('Interview scheduled and applicant informed via WorkConnect alerts!');
     } catch (err) {
-      alert(err);
+      setScheduleError(typeof err === 'string' ? err : err?.message || 'Failed to schedule interview. Please try again.');
     }
   };
 
@@ -160,7 +167,7 @@ const RecruiterDashboard = () => {
               { value: 'Rejected', label: 'Reject' }
             ]}
             onChange={(e) => handleStageChange(row._id, e.target.value)}
-            className="!w-32 !py-1 text-xs"
+            className="w-32! py-1! text-xs"
           />
           <Button
             variant="outline"
@@ -224,47 +231,30 @@ const RecruiterDashboard = () => {
         </p>
       </div>
 
+      {/* Immediate scheduling success / error banner */}
+      {scheduleSuccess && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-semibold animate-fade-in">
+          <svg className="w-5 h-5 shrink-0 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {scheduleSuccess}
+        </div>
+      )}
+      {scheduleError && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm font-semibold animate-fade-in">
+          <svg className="w-5 h-5 shrink-0 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          {scheduleError}
+        </div>
+      )}
+
       {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-6">
-        <Card title="Assigned Jobs" subtitle="Active Listings" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.totalAssignedJobs}</span>
-          <Briefcase className="text-brand-500" size={32} />
-        </Card>
-        <Card title="Interviews" subtitle="Live Panels Pending" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.activeInterviews}</span>
-          <Calendar className="text-indigo-500" size={32} />
-        </Card>
-        <Card title="Screened" subtitle="Candidates Checked" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.candidatesScreened}</span>
-          <Users className="text-emerald-500" size={32} />
-        </Card>
-        <Card title="Hires" subtitle="Successful Fill Rate" bodyClassName="flex items-center justify-between !py-4">
-          <span className="text-3xl font-black text-slate-800">{stats.hiresMade}</span>
-          <ClipboardCheck className="text-amber-500" size={32} />
-        </Card>
-      </div>
+      <RecruiterStatsCards stats={stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Assigned Jobs */}
-        <div className="lg:col-span-1">
-          <Card title="Assigned Job Openings">
-            {jobs.length === 0 ? (
-              <p className="text-xs text-slate-400 font-medium">No jobs assigned yet.</p>
-            ) : (
-              <div className="space-y-3.5">
-                {jobs.map((job) => (
-                  <div key={job._id} className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                    <h4 className="text-sm font-extrabold text-slate-800 leading-tight mb-1">{job.title}</h4>
-                    <p className="text-xs font-semibold text-slate-400">{job.company?.name || 'Acme Tech'}</p>
-                    <div className="mt-2">
-                      <Badge type="info">{job.workMode}</Badge>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </Card>
-        </div>
+        <RecruiterJobsPanel jobs={jobs} />
 
         {/* Right Candidate Pipelines */}
         <div className="lg:col-span-2">
@@ -284,7 +274,7 @@ const RecruiterDashboard = () => {
         <Modal isOpen={isScheduleOpen} onClose={() => setIsScheduleOpen(false)} title={`Schedule Interview: ${activeApp.candidate?.name}`}>
           <form onSubmit={handleScheduleSubmit} className="space-y-4">
             <Input label="Interview Date & Time" type="datetime-local" value={interviewDate} onChange={e => setInterviewDate(e.target.value)} required />
-            
+
             <Select
               label="Interview Room Type"
               options={[
@@ -298,7 +288,7 @@ const RecruiterDashboard = () => {
             {roomType === 'EXTERNAL' && (
               <Input label="Virtual Meeting Room Link" placeholder="https://zoom.us/yourmeetid" value={interviewLink} onChange={e => setInterviewLink(e.target.value)} required />
             )}
-            
+
             <Select
               label="Interview Form"
               options={[

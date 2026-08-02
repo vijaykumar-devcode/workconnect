@@ -30,7 +30,7 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-brand-950 p-6 font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-slate-900 via-slate-950 to-brand-950 p-6 font-sans">
       <div className="w-full max-w-md animate-fade-in">
         <div className="text-center mb-8 flex flex-col items-center">
           <Logo variant="full" theme="dark" iconClassName="w-12 h-12 mb-4" textClassName="text-3xl font-black" />
@@ -40,7 +40,7 @@ const ForgotPassword = () => {
           </p>
         </div>
 
-        <Card className="glass-panel border-slate-800 shadow-2xl !p-7 text-white bg-slate-900/40">
+        <Card className="glass-panel border-slate-800 shadow-2xl p-7! text-white bg-slate-900/40">
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             {error && (
               <div className="p-4 bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-bold rounded-xl animate-fade-in">
@@ -72,7 +72,7 @@ const ForgotPassword = () => {
             <Button
               type="submit"
               variant="primary"
-              className="w-full !py-3 font-semibold shadow-lg shadow-brand-blue/20 hover:shadow-brand-blue/30"
+              className="w-full py-3! font-semibold shadow-lg shadow-brand-blue/20 hover:shadow-brand-blue/30"
               loading={loading}
             >
               Send Reset Link

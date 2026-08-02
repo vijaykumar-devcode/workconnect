@@ -1,8 +1,18 @@
 const multer = require('multer');
 const { AppError } = require('./errorHandler');
 
-// Configure memory storage to receive file buffer directly
-const storage = multer.memoryStorage();
+const os = require('os');
+
+// Configure disk storage to prevent OOM errors on large/concurrent uploads
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, os.tmpdir());
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + '-' + file.originalname);
+  }
+});
 
 // File filter limits
 const fileFilter = (req, file, cb) => {

@@ -23,14 +23,17 @@ const buildQuery = (items) => ({
 });
 
 mockRequire(userModelPath, {
-  findById: async (id) => {
+  findById: (id) => {
     const users = {
       'owner-1': { _id: 'owner-1', status: 'ACTIVE', role: 'CANDIDATE', name: 'Owner User', email: 'owner@example.com' },
       'recruiter-1': { _id: 'recruiter-1', status: 'ACTIVE', role: 'RECRUITER', name: 'Recruiter User', email: 'recruiter@example.com' },
       'admin-1': { _id: 'admin-1', status: 'ACTIVE', role: 'ADMIN', name: 'Admin User', email: 'admin@example.com' },
     };
 
-    return users[id] || null;
+    const user = users[id] || null;
+    const query = Promise.resolve(user);
+    query.lean = () => Promise.resolve(user);
+    return query;
   },
 });
 

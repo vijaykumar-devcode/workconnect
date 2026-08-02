@@ -50,20 +50,9 @@ const EmployerCompany = () => {
     formData.append('category', 'company_logo');
 
     try {
-      const token = localStorage.getItem('accessToken');
-      const baseUrl = import.meta.env.VITE_API_URL || '';
-      const response = await fetch(`${baseUrl}/api/upload`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
+      const response = await api.post('/upload', formData);
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Failed to upload logo');
-
-      setValue('logo', data.data.fileUrl);
+      setValue('logo', response.data.fileUrl);
       setSuccess('Logo uploaded successfully!');
       setTimeout(() => setSuccess(''), 3000);
     } catch (err) {
@@ -164,7 +153,7 @@ const EmployerCompany = () => {
               </Badge>
             </div>
 
-            <div className="w-full h-[1px] bg-slate-100 my-5" />
+            <div className="w-full h-1px bg-slate-100 my-5" />
 
             <div className="w-full text-left space-y-3.5">
               <div className="flex items-center gap-3 text-slate-500 text-xs font-semibold">

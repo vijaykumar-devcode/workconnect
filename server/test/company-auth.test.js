@@ -100,7 +100,12 @@ mockRequire(companyModelPath, {
 });
 
 mockRequire(userModelPath, {
-  findById: async (id) => users[id] || null,
+  findById: (id) => {
+    const user = users[id] || null;
+    const query = Promise.resolve(user);
+    query.lean = () => Promise.resolve(user);
+    return query;
+  },
   findOne: async (query) => Object.values(users).find((user) => user.email === query.email) || null,
   create: async (data) => {
     const recruiter = {

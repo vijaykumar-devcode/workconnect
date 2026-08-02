@@ -19,10 +19,21 @@ export const InterviewProvider = ({ children, interviewId, userId, role }) => {
 
   // Real-time State
   const [chatHistory, setChatHistory] = useState([]);
-  const [whiteboardBatches, setWhiteboardBatches] = useState([]);
-  const [timerState, setTimerState] = useState({ actualEndTime: null, remainingSeconds: 0 });
+  const [timerState, setTimerState] = useState({
+    actualEndTime: null,
+    remainingSeconds: 0,
+    isTimerReady: false, // true only after the first real countdown tick
+  });
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [unreadChatCount, setUnreadChatCount] = useState(0);
+  const [timerError, setTimerError] = useState(null); // Surfaces extend/start errors to the UI
+
+  /**
+   * excalidrawScene — holds the latest remote scene JSON string.
+   * ExcalidrawCanvas reads this and calls updateScene() whenever it changes.
+   * Null means no scene has been received yet (fresh whiteboard).
+   */
+  const [excalidrawScene, setExcalidrawScene] = useState(null);
 
   const socketRef = useRef(null);
   const timerIntervalRef = useRef(null);
@@ -44,16 +55,13 @@ export const InterviewProvider = ({ children, interviewId, userId, role }) => {
 
   // 2. Initialize Socket Connection & Handle Reconnection Flow
   useEffect(() => {
-    // In production, configure exact backend URL and pass JWT for auth
-    const API_URL = import.meta.env.VITE_API_URL || '';
+    let API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    if (API_URL.endsWith('/api')) {
+      API_URL = API_URL.replace(/\/api$/, '');
+    }
 
-    // Minimal, safe auth: read the stored access token and provide it via Socket.IO handshake.
-    // If no token is present we avoid initiating the socket (prevents noisy rejected handshakes).
     const token = localStorage.getItem('accessToken');
     if (!token) {
-      // Intentionally do not connect if no auth token is available.
-      // The server enforces JWT on the handshake; connecting without a token results in immediate rejection.
-      // Log a concise developer warning so issues are visible during testing.
       // eslint-disable-next-line no-console
       console.warn('Interview socket not initialized: missing accessToken in localStorage');
       return;
@@ -73,12 +81,28 @@ export const InterviewProvider = ({ children, interviewId, userId, role }) => {
       setIsConnected(false);
     });
 
+    // -----------------------------------------------------------------------
     // Handle State Hydration
+    // -----------------------------------------------------------------------
     newSocket.on('room_state_hydration', (state) => {
       setChatHistory(state.chatHistory || []);
-      setWhiteboardBatches(state.whiteboardBatches || []);
+
+      if (state.excalidrawScene) {
+        setExcalidrawScene(state.excalidrawScene);
+      }
+
       if (state.timerState?.actualEndTime) {
-        setTimerState(prev => ({ ...prev, actualEndTime: new Date(state.timerState.actualEndTime) }));
+        // Active timer already running — restore it from the server.
+        setTimerState(prev => ({
+          ...prev,
+          actualEndTime: new Date(state.timerState.actualEndTime),
+        }));
+      } else if (role !== 'CANDIDATE') {
+        // No active timer and this user is the interviewer.
+        // Request the server to start (or re-sync) the timer.
+        // The server is idempotent: if a timer was already stored it re-syncs
+        // without resetting, so this is safe to call on every reconnect.
+        newSocket.emit('start_interview_timer', { interviewId });
       }
     });
 
@@ -93,44 +117,65 @@ export const InterviewProvider = ({ children, interviewId, userId, role }) => {
       }
     });
 
-    // Handle Real-time Whiteboard
-    newSocket.on('whiteboard_event_received', (eventData) => {
-      // Logic to append to current unbatched strokes for the canvas to render
-      setWhiteboardBatches(prev => {
-        const latest = [...prev];
-        // Append to the last batch or create a temporary one for real-time
-        if (latest.length === 0) latest.push({ events: [] });
-        latest[latest.length - 1].events.push(eventData);
-        return latest;
-      });
+    // Handle Real-time Excalidraw Scene Sync from other participants
+    newSocket.on('excalidraw_scene_received', ({ scene }) => {
+      if (scene) setExcalidrawScene(scene);
     });
 
-    // Handle Timer Sync
+    // -----------------------------------------------------------------------
+    // Handle Timer Sync — broadcasted by the server after every start/extend.
+    // We only update the fields that are present in the payload; this lets
+    // a partial update (e.g. only actualEndTime from extend_timer) work
+    // without clearing the existing actualStartTime.
+    // -----------------------------------------------------------------------
     newSocket.on('timer_sync', (state) => {
-      if (state.actualEndTime) {
-        setTimerState(prev => ({ ...prev, actualEndTime: new Date(state.actualEndTime) }));
-      }
+      setTimerState(prev => ({
+        ...prev,
+        ...(state.actualStartTime ? { actualStartTime: new Date(state.actualStartTime) } : {}),
+        ...(state.actualEndTime   ? { actualEndTime:   new Date(state.actualEndTime)   } : {}),
+      }));
+    });
+
+    // Handle timer operation errors (start / extend failures)
+    newSocket.on('timer_error', ({ message }) => {
+      setTimerError(message);
+      // Auto-clear the error after 5 seconds so it doesn't linger
+      setTimeout(() => setTimerError(null), 5000);
     });
 
     return () => {
       newSocket.disconnect();
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [interviewId, userId, role]);
 
   // 3. Timer Local Computation
+  // Runs a 1-second interval countdown derived from the server-authoritative
+  // actualEndTime.  Resets whenever actualEndTime changes (start or extend).
   useEffect(() => {
     if (!timerState.actualEndTime) return;
 
-    timerIntervalRef.current = setInterval(() => {
-      const remainingMs = timerState.actualEndTime.getTime() - new Date().getTime();
+    const tick = () => {
+      const remainingMs = timerState.actualEndTime.getTime() - Date.now();
       const remainingSecs = Math.max(0, Math.floor(remainingMs / 1000));
-      setTimerState(prev => ({ ...prev, remainingSeconds: remainingSecs }));
-
+      setTimerState(prev => ({
+        ...prev,
+        remainingSeconds: remainingSecs,
+        // Mark the timer as ready only after we have received and computed
+        // at least one real tick from the server-authoritative end time.
+        // This prevents the initial state (remainingSeconds: 0) from
+        // incorrectly triggering the "Time is up" alert on room entry.
+        isTimerReady: true,
+      }));
       if (remainingSecs === 0) {
         clearInterval(timerIntervalRef.current);
       }
-    }, 1000);
+    };
+
+    // Run immediately so the display doesn't lag by 1 second on start/extend.
+    tick();
+    timerIntervalRef.current = setInterval(tick, 1000);
 
     return () => clearInterval(timerIntervalRef.current);
   }, [timerState.actualEndTime]);
@@ -144,31 +189,51 @@ export const InterviewProvider = ({ children, interviewId, userId, role }) => {
     }
   }, [interviewId, userId]);
 
-  const emitWhiteboardEvent = useCallback((eventType, payload) => {
-    if (socketRef.current) {
-      const eventData = {
-        eventType,
-        payload: typeof payload === 'string' ? payload : JSON.stringify(payload || {}),
-        senderId: userId,
-        timestamp: new Date().toISOString()
-      };
-      
-      // Optimistic update to fix disappearing local strokes
-      setWhiteboardBatches(prev => {
-        const latest = [...prev];
-        if (latest.length === 0) latest.push({ events: [] });
-        latest[latest.length - 1].events.push(eventData);
-        return latest;
-      });
+  /**
+   * broadcastExcalidrawScene
+   *
+   * Called by ExcalidrawCanvas (throttled) whenever the local user makes a change.
+   */
+  const broadcastExcalidrawScene = useCallback((elements, appState) => {
+    if (!socketRef.current) return;
 
-      socketRef.current.emit('whiteboard_event', { interviewId, eventType, payload, senderId: userId });
-    }
+    const scene = JSON.stringify({
+      elements,
+      appState: {
+        viewBackgroundColor: appState.viewBackgroundColor,
+        currentItemStrokeColor: appState.currentItemStrokeColor,
+        currentItemBackgroundColor: appState.currentItemBackgroundColor,
+        currentItemFillStyle: appState.currentItemFillStyle,
+        currentItemStrokeWidth: appState.currentItemStrokeWidth,
+        currentItemRoughness: appState.currentItemRoughness,
+        currentItemOpacity: appState.currentItemOpacity,
+        currentItemFontFamily: appState.currentItemFontFamily,
+        currentItemFontSize: appState.currentItemFontSize,
+        currentItemTextAlign: appState.currentItemTextAlign,
+        currentItemStrokeSharpness: appState.currentItemStrokeSharpness,
+      },
+    });
+
+    socketRef.current.emit('excalidraw_sync', {
+      interviewId,
+      scene,
+      senderId: userId,
+    });
   }, [interviewId, userId]);
 
+  /**
+   * extendTimer
+   *
+   * Emits an extend_timer request to the server.  The server validates the
+   * minutes value, persists the new end-time, and broadcasts timer_sync back
+   * to all room participants.  Any server-side error comes back as timer_error.
+   *
+   * @param {number} minutes - Positive integer (1–120)
+   */
   const extendTimer = useCallback((minutes) => {
-    if (socketRef.current) {
-      socketRef.current.emit('extend_timer', { interviewId, minutes });
-    }
+    if (!socketRef.current) return;
+    setTimerError(null); // Clear any previous error before the new attempt
+    socketRef.current.emit('extend_timer', { interviewId, minutes });
   }, [interviewId]);
 
   const toggleChat = useCallback(() => {
@@ -183,15 +248,16 @@ export const InterviewProvider = ({ children, interviewId, userId, role }) => {
     isConnected,
     liveKitToken,
     chatHistory,
-    whiteboardBatches,
+    excalidrawScene,
+    broadcastExcalidrawScene,
     timerState,
+    timerError,
     isChatOpen,
     unreadChatCount,
     sendChatMessage,
-    emitWhiteboardEvent,
     toggleChat,
     extendTimer,
-    role
+    role,
   };
 
   return (

@@ -6,10 +6,14 @@ import Card from '../../components/ui/Card';
 import Table from '../../components/ui/Table';
 import Badge from '../../components/ui/Badge';
 import { Calendar, Video, CheckCircle, Clock, XCircle } from 'lucide-react';
+import { useInterviewFilters } from '../../hooks/useInterviewFilters';
+import InterviewFilterBar from '../interviews/components/InterviewFilterBar';
 
 const EmployerInterviews = () => {
   const dispatch = useDispatch();
   const { interviews, loading } = useSelector((state) => state.interviews);
+
+  const filters = useInterviewFilters(interviews, 'employer');
 
   useEffect(() => {
     dispatch(fetchInterviews());
@@ -101,12 +105,18 @@ const EmployerInterviews = () => {
         </p>
       </div>
 
+      <InterviewFilterBar {...filters} userType="employer" />
+
       <Card>
         <Table
           columns={columns}
-          data={interviews}
+          data={filters.filteredInterviews}
           loading={loading}
-          emptyMessage="No interviews have been scheduled for your company yet."
+          emptyMessage={
+            filters.activeFiltersCount > 0
+              ? "No interviews match your active filters."
+              : "No interviews have been scheduled for your company yet."
+          }
         />
       </Card>
     </div>

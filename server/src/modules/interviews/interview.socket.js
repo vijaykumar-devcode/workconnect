@@ -1,9 +1,9 @@
 const Redis = require('ioredis');
 const jwt = require('jsonwebtoken');
 const ChatMessage = require('./chatMessage.model');
-const WhiteboardEvent = require('./whiteboardEvent.model');
+const WhiteboardScene = require('./whiteboardEvent.model'); // Now stores full Excalidraw scenes
 const Interview = require('./interview.model');
-const AuditLog = require('../audit/auditLog.model');
+const InterviewAuditLog = require('../audit/auditLog.model');
 const logger = require('../../utils/logger');
 const { requireJwtSecret } = require('../../utils/jwtSecrets');
 
@@ -27,6 +27,34 @@ if (process.env.USE_REDIS === 'true') {
 // Simple In-Memory Rate Limiter Map (Production ready for single node, shared via Redis if strict)
 const rateLimits = new Map();
 
+// ---------------------------------------------------------------------------
+// Helper: safely compute or retrieve the current end time for an interview.
+// If the interview timer has not been started yet, it initialises it from
+// interview.duration so that extend_timer can work even before an explicit
+// start_interview_timer is called.
+// Returns the effective (possibly newly created) actualEndTime Date.
+// ---------------------------------------------------------------------------
+async function ensureTimerStarted(interview) {
+  if (interview.roomMetadata?.actualEndTime) {
+    return interview.roomMetadata.actualEndTime;
+  }
+
+  // Timer has never been started – initialise it now from interview duration.
+  const now = new Date();
+  const durationMs = (interview.duration || 45) * 60 * 1000;
+  const endTime = new Date(now.getTime() + durationMs);
+
+  interview.roomMetadata = {
+    ...interview.roomMetadata,
+    actualStartTime: interview.roomMetadata?.actualStartTime || now,
+    actualEndTime: endTime,
+  };
+  await interview.save();
+
+  logger.info(`[Timer] Auto-started for interview ${interview._id}. End: ${endTime.toISOString()}`);
+  return endTime;
+}
+
 const registerInterviewHandlers = (io) => {
   // Socket.IO Hardening: JWT Validation in Handshake
   io.use((socket, next) => {
@@ -40,7 +68,7 @@ const registerInterviewHandlers = (io) => {
         logger.warn('Socket connection rejected: Invalid token');
         return next(new Error('Authentication error'));
       }
-      socket.user = decoded;
+      socket.user = decoded; // { id, iat, exp }
       next();
     });
   });
@@ -54,27 +82,27 @@ const registerInterviewHandlers = (io) => {
       socket.join(roomKey);
 
       // Audit Log: JOIN_ROOM
-      AuditLog.create({ interview: interviewId, user: userId, action: 'JOINED_ROOM' }).catch(err => logger.error('AuditLog Error:', err));
+      InterviewAuditLog.create({ interview: interviewId, user: userId, action: 'JOINED_ROOM' }).catch(err => logger.error('InterviewAuditLog Error:', err));
 
       try {
         // STATE HYDRATION: Fetch all required state to replay
         const interview = await Interview.findById(interviewId);
         const chatHistory = await ChatMessage.find({ interview: interviewId }).sort({ createdAt: 1 }).limit(100);
 
-        // Fetch Whiteboard Events from Redis Streams + DB
-        // For brevity, we assume the DB has the latest flushed batch
-        const whiteboardBatches = await WhiteboardEvent.find({ interview: interviewId }).sort({ batchSequence: 1 });
+        // Fetch latest Excalidraw scene snapshot for this interview (if any).
+        const sceneDoc = await WhiteboardScene.findOne({ interview: interviewId });
 
         socket.emit('room_state_hydration', {
           chatHistory,
-          whiteboardBatches,
+          excalidrawScene: sceneDoc?.scene ?? null,
           timerState: {
-            actualStartTime: interview?.roomMetadata?.actualStartTime,
-            actualEndTime: interview?.roomMetadata?.actualEndTime,
-            durationMinutes: interview?.duration,
-          }
+            actualStartTime: interview?.roomMetadata?.actualStartTime ?? null,
+            actualEndTime: interview?.roomMetadata?.actualEndTime ?? null,
+            durationMinutes: interview?.duration ?? 45,
+          },
         });
       } catch (err) {
+        logger.error('Room hydration error:', err);
         socket.emit('error', 'Failed to hydrate room state');
       }
     });
@@ -92,104 +120,157 @@ const registerInterviewHandlers = (io) => {
         interview: interviewId,
         sender: senderId,
         content,
-        createdAt: new Date()
+        createdAt: new Date(),
       };
 
-      // Broadcast immediately via Socket.io (which uses Pub/Sub under the hood if redis-adapter is used)
+      // Broadcast immediately via Socket.io
       socket.to(roomKey).emit('chat_message_received', message);
 
       // Async Batch Save to DB
       try {
         await ChatMessage.create(message);
-        AuditLog.create({ interview: interviewId, user: senderId, action: 'CHAT_MESSAGE' }).catch(err => logger.error(err));
+        InterviewAuditLog.create({ interview: interviewId, user: senderId, action: 'CHAT_MESSAGE' }).catch(err => logger.error(err));
       } catch (err) {
         logger.error('Chat persistence error:', err);
       }
     });
 
-    // 3. Whiteboard System (Redis Streams bounded)
-    socket.on('whiteboard_event', async ({ interviewId, eventType, payload, senderId }) => {
-      const limitKey = `${senderId}:wb`;
-      const lastEvent = rateLimits.get(limitKey);
-      if (lastEvent && Date.now() - lastEvent < 50) return; // 50ms throttle limit
+    // 3. Excalidraw Scene Sync
+    socket.on('excalidraw_sync', async ({ interviewId, scene, senderId }) => {
+      if (!scene || typeof scene !== 'string') return;
+
+      // Rate limit: max 5 syncs/second per sender (200ms window)
+      const limitKey = `${senderId}:excalidraw`;
+      const lastSync = rateLimits.get(limitKey);
+      if (lastSync && Date.now() - lastSync < 200) return;
       rateLimits.set(limitKey, Date.now());
 
       const roomKey = `interview:${interviewId}`;
-      const streamKey = `whiteboard:stream:${interviewId}`;
 
-      const eventData = {
-        eventType,
-        payload: typeof payload === 'string' ? payload : JSON.stringify(payload || {}),
-        senderId,
-        timestamp: new Date().toISOString()
-      };
+      // Broadcast the scene to all OTHER participants in the room immediately.
+      socket.to(roomKey).emit('excalidraw_scene_received', { scene });
 
-      // Broadcast immediately for low latency UI
-      socket.to(roomKey).emit('whiteboard_event_received', eventData);
-
-      // Add to Redis Stream for durable persistence (Bounded memory safe)
+      // Persist the latest scene as a single upserted document per interview.
       try {
-        if (redisClient) {
-          await redisClient.xadd(streamKey, 'MAXLEN', '~', 10000, '*',
-            'eventType', eventData.eventType,
-            'payload', eventData.payload,
-            'senderId', eventData.senderId,
-            'timestamp', eventData.timestamp
-          );
-        } else {
-          // Fallback: persist the event as a WhiteboardEvent batch in MongoDB
-          await WhiteboardEvent.create({
-            interview: interviewId,
-            batchSequence: Date.now(),
-            events: [{
-              eventType: eventData.eventType,
-              payload: JSON.parse(eventData.payload),
-              sender: eventData.senderId,
-              timestamp: new Date(eventData.timestamp)
-            }]
-          });
-        }
+        await WhiteboardScene.findOneAndUpdate(
+          { interview: interviewId },
+          { scene },
+          { upsert: true, new: true }
+        );
       } catch (err) {
-        logger.error('Whiteboard persistence error:', err);
+        logger.error('Excalidraw scene persistence error:', err);
       }
     });
 
     // 4. Timer System (Server Authoritative)
+    // -----------------------------------------------------------------------
+    // start_interview_timer — called by the interviewer (non-CANDIDATE) when
+    // they open the room and no timer is running yet.  Safe to call multiple
+    // times: if a timer is already running it is a no-op (we keep the
+    // existing end-time to avoid resetting a partially elapsed session).
+    // -----------------------------------------------------------------------
     socket.on('start_interview_timer', async ({ interviewId }) => {
       const roomKey = `interview:${interviewId}`;
-      const interview = await Interview.findById(interviewId);
 
-      if (!interview) return;
+      try {
+        const interview = await Interview.findById(interviewId);
+        if (!interview) {
+          logger.warn(`start_interview_timer: interview ${interviewId} not found`);
+          return socket.emit('timer_error', { message: 'Interview not found.' });
+        }
 
-      const now = new Date();
-      const endTime = new Date(now.getTime() + interview.duration * 60000);
+        // Idempotency guard — do not reset a timer that is already running.
+        if (interview.roomMetadata?.actualEndTime) {
+          const remaining = interview.roomMetadata.actualEndTime.getTime() - Date.now();
+          if (remaining > 0) {
+            // Re-sync this socket in case they just (re-)joined.
+            return socket.emit('timer_sync', {
+              actualStartTime: interview.roomMetadata.actualStartTime,
+              actualEndTime: interview.roomMetadata.actualEndTime,
+            });
+          }
+        }
 
-      interview.roomMetadata = {
-        ...interview.roomMetadata,
-        actualStartTime: now,
-        actualEndTime: endTime
-      };
-      await interview.save();
+        // Start the timer from scratch.
+        const now = new Date();
+        const endTime = new Date(now.getTime() + (interview.duration || 45) * 60 * 1000);
 
-      io.to(roomKey).emit('timer_sync', {
-        actualStartTime: now,
-        actualEndTime: endTime
-      });
+        interview.roomMetadata = {
+          ...interview.roomMetadata,
+          actualStartTime: now,
+          actualEndTime: endTime,
+        };
+        await interview.save();
+
+        // Broadcast to ALL participants (including the sender).
+        io.to(roomKey).emit('timer_sync', {
+          actualStartTime: now,
+          actualEndTime: endTime,
+        });
+
+        InterviewAuditLog.create({ interview: interviewId, user: socket.user?.id, action: 'TIMER_STARTED' })
+          .catch(err => logger.error('Audit log error:', err));
+
+        logger.info(`[Timer] Started for interview ${interviewId}. End: ${endTime.toISOString()}`);
+      } catch (err) {
+        logger.error('start_interview_timer error:', err);
+        socket.emit('timer_error', { message: 'Failed to start timer. Please try again.' });
+      }
     });
 
+    // -----------------------------------------------------------------------
+    // extend_timer — called by the interviewer to add time to a live session.
+    //
+    // Validation:
+    //   • minutes must be a positive integer between 1 and 120.
+    //   • If no timer is running yet, we auto-start it first so that
+    //     "extend by +5m" works even before an explicit start event.
+    //
+    // The updated end-time is broadcast to ALL room participants and
+    // persisted to MongoDB atomically.
+    // -----------------------------------------------------------------------
     socket.on('extend_timer', async ({ interviewId, minutes }) => {
+      // --- Input validation ---
+      const parsedMinutes = parseInt(minutes, 10);
+      if (!Number.isFinite(parsedMinutes) || parsedMinutes < 1 || parsedMinutes > 120) {
+        return socket.emit('timer_error', {
+          message: 'Invalid value: minutes must be a whole number between 1 and 120.',
+        });
+      }
+
       const roomKey = `interview:${interviewId}`;
-      const interview = await Interview.findById(interviewId);
 
-      if (!interview || !interview.roomMetadata?.actualEndTime) return;
+      try {
+        const interview = await Interview.findById(interviewId);
+        if (!interview) {
+          logger.warn(`extend_timer: interview ${interviewId} not found`);
+          return socket.emit('timer_error', { message: 'Interview not found.' });
+        }
 
-      const newEndTime = new Date(interview.roomMetadata.actualEndTime.getTime() + minutes * 60000);
-      interview.roomMetadata.actualEndTime = newEndTime;
-      await interview.save();
+        // If the timer was never started, auto-start it now so that extend
+        // works even if start_interview_timer was never called explicitly.
+        const currentEndTime = await ensureTimerStarted(interview);
 
-      io.to(roomKey).emit('timer_sync', {
-        actualEndTime: newEndTime
-      });
+        // Add the requested minutes to the authoritative server end-time.
+        const newEndTime = new Date(currentEndTime.getTime() + parsedMinutes * 60 * 1000);
+        interview.roomMetadata.actualEndTime = newEndTime;
+        await interview.save();
+
+        // Broadcast the new end-time to ALL participants (including sender).
+        io.to(roomKey).emit('timer_sync', { actualEndTime: newEndTime });
+
+        // Audit trail
+        InterviewAuditLog.create({
+          interview: interviewId,
+          user: socket.user?.id,
+          action: 'TIMER_EXTENDED',
+        }).catch(err => logger.error('Audit log error:', err));
+
+        logger.info(`[Timer] Extended by ${parsedMinutes}m for interview ${interviewId}. New end: ${newEndTime.toISOString()}`);
+      } catch (err) {
+        logger.error('extend_timer error:', err);
+        socket.emit('timer_error', { message: 'Failed to extend timer. Please try again.' });
+      }
     });
 
     socket.on('disconnect', () => {

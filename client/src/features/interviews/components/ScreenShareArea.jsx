@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { useTracks, ParticipantTile } from '@livekit/components-react';
+import { useTracks, VideoTrack } from '@livekit/components-react';
 import { Track } from 'livekit-client';
 
 export default function ScreenShareArea() {
@@ -47,9 +47,8 @@ export default function ScreenShareArea() {
   // Render ONLY when valid track exists
   return (
     <div className="w-full h-full bg-black relative">
-      <ParticipantTile 
-        participant={activeScreenShare.participant}
-        source={Track.Source.ScreenShare}
+      <VideoTrack 
+        trackRef={activeScreenShare}
         className="w-full h-full object-contain" 
       />
       <div className="absolute top-4 left-4 bg-black/60 px-3 py-1 rounded text-xs text-white backdrop-blur-md z-50 shadow-lg border border-slate-700">

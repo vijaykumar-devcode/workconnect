@@ -73,4 +73,10 @@ const JobSchema = new mongoose.Schema(
 // Create compound index for search
 JobSchema.index({ title: 'text', description: 'text', location: 'text' });
 
+// Add explicit indexes for common filter queries
+JobSchema.index({ status: 1 });
+JobSchema.index({ company: 1 });
+JobSchema.index({ publisher: 1 });
+JobSchema.index({ assignedRecruiter: 1 });
+
 module.exports = mongoose.model('Job', JobSchema);

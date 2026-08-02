@@ -3,6 +3,7 @@ const Interview = require('./interview.model');
 const Application = require('../applications/application.model');
 const { AppError } = require('../../middleware/errorHandler');
 const emailService = require('../../services/emailService');
+const logger = require('../../utils/logger');
 
 class InterviewService {
   async scheduleInterview(interviewData, user) {
@@ -118,7 +119,7 @@ class InterviewService {
     if (!interview) {
       throw new AppError('Interview not found', 404);
     }
-    
+
     // Security Rule: Validate user role and participation
     if (user.role === 'CANDIDATE' && interview.candidate?.toString?.() !== user._id.toString()) {
       throw new AppError('Unauthorized access to this interview room', 403);
@@ -126,27 +127,35 @@ class InterviewService {
     if (['RECRUITER', 'EMPLOYER'].includes(user.role) && interview.interviewer?.toString?.() !== user._id.toString()) {
       throw new AppError('Unauthorized access to this interview room', 403);
     }
-    
+
     if (interview.roomType !== 'INTERNAL_ROOM') {
       throw new AppError('This interview is an external meeting, no internal room available.', 400);
     }
 
     const { AccessToken } = require('livekit-server-sdk');
     const roomName = interview.roomMetadata?.livekitRoomName || `room-${interviewId}`;
-    
+
+    const apiKey = process.env.LIVEKIT_API_KEY;
+    const apiSecret = process.env.LIVEKIT_API_SECRET;
+
+    if (!apiKey || !apiSecret) {
+      throw new AppError('LiveKit API Key and Secret must be configured in environment variables', 500);
+    }
+    logger.info(`[LiveKit Debug] Using API Key: "${apiKey}", Secret length: ${apiSecret.length}, Room: ${roomName}`);
+
     // Short-lived token (10 minutes)
     const at = new AccessToken(
-      process.env.LIVEKIT_API_KEY || 'devkey',
-      process.env.LIVEKIT_API_SECRET || 'secret',
+      apiKey,
+      apiSecret,
       {
         identity: user._id.toString(),
         name: user.name,
         ttl: '10m', // 10 minutes TTL Security Rule
       }
     );
-    
+
     at.addGrant({ roomJoin: true, room: roomName });
-    
+
     return at.toJwt();
   }
 }

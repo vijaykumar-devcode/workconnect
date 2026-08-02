@@ -22,7 +22,7 @@ const OnboardingReviewModal = ({ isOpen, onClose, application }) => {
         docId: docId,
         status: status
       })).unwrap();
-      
+
       // Refresh the application list to reflect status changes
       dispatch(fetchApplications());
       alert(`Document marked as ${status}`);

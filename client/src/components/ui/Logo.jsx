@@ -74,9 +74,13 @@ const Logo = ({
       className={`${iconClassName} select-none overflow-visible`}
       fill="none"
       xmlns="http://www.w3.org/2000/svg"
-      variants={isSplash ? pulseVars : {}}
-      initial={isSplash ? "hidden" : false}
-      animate={isSplash ? "visible" : false}
+      {...(isSplash
+        ? {
+          variants: pulseVars,
+          initial: 'hidden',
+          animate: 'visible',
+        }
+        : {})}
     >
       <defs>
         <linearGradient id="navy-grad" x1="0" y1="0" x2="0" y2="1">
@@ -130,9 +134,13 @@ const Logo = ({
       <div className={`flex items-center gap-2.5 ${isSplash ? 'flex-col gap-6' : ''}`}>
         {renderEmblem()}
         <TextWrapper
-          variants={isSplash ? textVars : {}}
-          initial={isSplash ? "hidden" : false}
-          animate={isSplash ? "visible" : false}
+          {...(isSplash
+            ? {
+              variants: textVars,
+              initial: 'hidden',
+              animate: 'visible',
+            }
+            : {})}
           className={`font-extrabold tracking-tight select-none leading-none ${textClassName}`}
         >
           <span style={{ color: colors.textWork }} className="transition-colors duration-300">Work</span>
@@ -142,9 +150,13 @@ const Logo = ({
 
       {(variant === 'tagline' || variant === 'splash') && (
         <TextWrapper
-          variants={isSplash ? taglineVars : {}}
-          initial={isSplash ? "hidden" : false}
-          animate={isSplash ? "visible" : false}
+          {...(isSplash
+            ? {
+              variants: taglineVars,
+              initial: 'hidden',
+              animate: 'visible',
+            }
+            : {})}
           className={`flex items-center gap-1.5 font-extrabold tracking-wider uppercase select-none ${isSplash ? 'mt-4 text-xs text-slate-400' : 'mt-1 text-[9px] text-slate-400'}`}
         >
           <span>FIND JOBS.</span>
