@@ -1,1 +1,0 @@
-const mongoose = require('mongoose'); require('dotenv').config(); const User = require('./src/modules/auth/user.model'); mongoose.connect(process.env.MONGODB_URI).then(async () => { const user = await User.findOne().sort({createdAt: -1}).select('+password'); console.log('Latest user:', user.email, 'Password hash:', user.password); process.exit(); });
