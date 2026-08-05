@@ -5,6 +5,8 @@ import Select from '../../../components/ui/Select';
 import Button from '../../../components/ui/Button';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import { useDispatch } from 'react-redux';
 import { createJob, updateJob, fetchJobs } from '../../jobs/jobSlice';
 import { scheduleInterview } from '../../interviews/interviewSlice';
@@ -182,10 +184,14 @@ export const ScheduleInterviewModal = ({ isOpen, onClose, activeApp, onScheduleS
   const [newInterview, setNewInterview] = useState({
     date: '', duration: 45, link: '', type: 'Technical Interview', roomType: 'EXTERNAL'
   });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [localError, setLocalError] = useState('');
 
   const handleScheduleSubmit = async (e) => {
     e.preventDefault();
     onScheduleError('');
+    setLocalError('');
+    setIsSubmitting(true);
     try {
       await dispatch(scheduleInterview({
         applicationId: activeApp._id,
@@ -196,14 +202,40 @@ export const ScheduleInterviewModal = ({ isOpen, onClose, activeApp, onScheduleS
       onScheduleSuccess(`Interview scheduled for ${activeApp.candidate?.name || 'the candidate'}! Notification sent successfully.`);
       dispatch(fetchApplications());
     } catch (err) {
-      onScheduleError(typeof err === 'string' ? err : err?.message || 'Failed to schedule interview. Please try again.');
+      const errorMsg = typeof err === 'string' ? err : err?.message || 'Failed to schedule interview. Please try again.';
+      setLocalError(errorMsg);
+      onScheduleError(errorMsg);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={`Schedule Interview: ${activeApp?.candidate?.name}`}>
       <form onSubmit={handleScheduleSubmit} className="space-y-4">
-        <Input label="Interview Date & Time" type="datetime-local" value={newInterview.date} onChange={e => setNewInterview({ ...newInterview, date: e.target.value })} required />
+        {localError && (
+          <div className="p-3 text-sm text-red-600 bg-red-50 rounded-lg border border-red-200">
+            {localError}
+          </div>
+        )}
+        <div className="flex flex-col space-y-1.5 w-full">
+          <label className="text-xs font-bold text-theme-text-secondary uppercase tracking-wider">
+            Interview Date & Time <span className="text-theme-error">*</span>
+          </label>
+          <DatePicker
+            selected={newInterview.date ? new Date(newInterview.date) : null}
+            onChange={(date) => setNewInterview({ ...newInterview, date: date ? date.toISOString() : '' })}
+            showTimeSelect
+            timeFormat="hh:mm aa"
+            timeIntervals={15}
+            timeCaption="Time"
+            dateFormat="MMMM d, yyyy h:mm aa"
+            className="form-input bg-theme-surface border-theme-border text-theme-text-primary focus:border-brand-blue focus:ring-brand-blue/15 w-full"
+            wrapperClassName="w-full"
+            placeholderText="Select date and time"
+            required
+          />
+        </div>
         <Input label="Duration (minutes)" type="number" value={newInterview.duration} onChange={e => setNewInterview({ ...newInterview, duration: e.target.value })} required />
 
         <Select
@@ -236,8 +268,10 @@ export const ScheduleInterviewModal = ({ isOpen, onClose, activeApp, onScheduleS
         />
 
         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button type="submit" variant="primary">Schedule & Alert</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button type="submit" variant="primary" loading={isSubmitting}>
+            {isSubmitting ? 'Scheduling...' : 'Schedule & Alert'}
+          </Button>
         </div>
       </form>
     </Modal>
