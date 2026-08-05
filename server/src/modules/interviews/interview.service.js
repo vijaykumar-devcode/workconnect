@@ -88,7 +88,15 @@ class InterviewService {
     }
 
     return await Interview.find(query)
-      .populate('application')
+      .populate({
+        path: 'application',
+        populate: {
+          path: 'job',
+          populate: {
+            path: 'company'
+          }
+        }
+      })
       .populate('candidate', 'name email phone')
       .populate('interviewer', 'name email')
       .sort({ date: 1 });
