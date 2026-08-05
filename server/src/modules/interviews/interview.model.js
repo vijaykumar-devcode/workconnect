@@ -22,6 +22,7 @@ const InterviewSchema = new mongoose.Schema(
       required: [true, 'Please schedule the interview date and time'],
       validate: {
         validator: function(value) {
+          if (!this.isNew && !this.isModified('date')) return true;
           return value > new Date();
         },
         message: 'Interview date must be in the future'
