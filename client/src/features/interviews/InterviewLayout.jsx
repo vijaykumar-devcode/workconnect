@@ -296,10 +296,10 @@ function VideoStreams({ containerRef }) {
   );
 
   const localTrack = allCameraTracks.find(
-    (t) => t.participant?.identity === localParticipant?.identity
+    (t) => t.participant?.isLocal
   );
   const remoteTracks = allCameraTracks.filter(
-    (t) => t.participant?.identity !== localParticipant?.identity
+    (t) => !t.participant?.isLocal
   );
 
   const [initialBounds, setInitialBounds] = useState(null);
