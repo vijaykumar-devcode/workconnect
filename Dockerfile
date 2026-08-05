@@ -1,19 +1,17 @@
-# workconnect/Dockerfile
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
+# Copy package files from the server folder
+COPY server/package.json ./
+COPY server/package-lock.json ./
 
-# Install dependencies strictly
-RUN npm ci --only=production
+# Install production dependencies
+RUN npm ci --omit=dev
 
-# Copy source code
-COPY . .
+# Copy backend source
+COPY server/ .
 
-# Expose backend port
 EXPOSE 5000
 
-# Start production server
 CMD ["npm", "start"]
