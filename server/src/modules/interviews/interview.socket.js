@@ -24,8 +24,32 @@ if (process.env.USE_REDIS === 'true') {
   logger.info('Interview Redis client disabled (USE_REDIS not set)');
 }
 
-// Simple In-Memory Rate Limiter Map (Production ready for single node, shared via Redis if strict)
+// In-Memory Rate Limiter Map (Fallback if Redis is disabled)
 const rateLimits = new Map();
+
+// Helper to check rate limits, supporting multi-instance deployments via Redis
+async function checkRateLimit(key, ms) {
+  if (redisClient) {
+    try {
+      const result = await redisClient.set(key, '1', 'PX', ms, 'NX');
+      return result === 'OK';
+    } catch (err) {
+      logger.warn('Redis rate limit error:', err);
+      // Fallback to in-memory if Redis temporarily fails
+    }
+  }
+  const lastSync = rateLimits.get(key);
+  if (lastSync && Date.now() - lastSync < ms) return false;
+  rateLimits.set(key, Date.now());
+  return true;
+}
+
+// Helper to clean up local rate limits on disconnect to prevent memory leaks
+function cleanupLocalRateLimits(userId) {
+  if (!userId) return;
+  rateLimits.delete(`${userId}:chat`);
+  rateLimits.delete(`${userId}:excalidraw`);
+}
 
 // ---------------------------------------------------------------------------
 // Helper: safely compute or retrieve the current end time for an interview.
@@ -110,9 +134,8 @@ const registerInterviewHandlers = (io) => {
     // 2. Chat System with Rate Limiting
     socket.on('chat_message', async ({ interviewId, senderId, content }) => {
       const limitKey = `${senderId}:chat`;
-      const lastMsg = rateLimits.get(limitKey);
-      if (lastMsg && Date.now() - lastMsg < 500) return; // 500ms rate limit
-      rateLimits.set(limitKey, Date.now());
+      const allowed = await checkRateLimit(limitKey, 500);
+      if (!allowed) return; // 500ms rate limit
 
       const roomKey = `interview:${interviewId}`;
 
@@ -139,11 +162,11 @@ const registerInterviewHandlers = (io) => {
     socket.on('excalidraw_sync', async ({ interviewId, scene, senderId }) => {
       if (!scene || typeof scene !== 'string') return;
 
-      // Rate limit: max 5 syncs/second per sender (200ms window)
+      // Rate limit: reduced to 50ms to allow client-side throttler to work without dropping the final stroke.
+      // This prevents server flooding while maintaining smooth real-time collaboration.
       const limitKey = `${senderId}:excalidraw`;
-      const lastSync = rateLimits.get(limitKey);
-      if (lastSync && Date.now() - lastSync < 200) return;
-      rateLimits.set(limitKey, Date.now());
+      const allowed = await checkRateLimit(limitKey, 50);
+      if (!allowed) return;
 
       const roomKey = `interview:${interviewId}`;
 
@@ -275,7 +298,10 @@ const registerInterviewHandlers = (io) => {
 
     socket.on('disconnect', () => {
       logger.info(`Socket disconnected: ${socket.id}`);
-      // Clean up rate limits and handle leave logic if necessary
+      // Clean up rate limits and handle leave logic to prevent memory leaks
+      if (socket.user?.id) {
+        cleanupLocalRateLimits(socket.user.id);
+      }
     });
   });
 };

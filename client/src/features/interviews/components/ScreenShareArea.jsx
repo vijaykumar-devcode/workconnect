@@ -11,7 +11,10 @@ export default function ScreenShareArea() {
   // We rely ONLY on TrackPublication logic to find the active stream.
   // We NEVER use tracks[0] or participant boolean flags.
   const activeScreenShare = tracks.find(
-    (t) => t.source === Track.Source.ScreenShare && t.publication && t.publication.isSubscribed && t.publication.track
+    (t) => t.source === Track.Source.ScreenShare && 
+           t.publication && 
+           (t.publication.isSubscribed || t.participant.isLocal) && 
+           t.publication.track
   );
 
   // Mandatory Debug Logs

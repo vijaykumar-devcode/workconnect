@@ -101,15 +101,34 @@ function useDraggable(initialX, initialY, cardW = 240, cardH = 180) {
 
   // Handle window resizing and fullscreen toggling
   useEffect(() => {
-    if (!cardRef.current || !cardRef.current.offsetParent) return;
+    const parent = cardRef.current?.parentElement;
+    if (!parent) return;
+
+    let prevWidth = parent.clientWidth || window.innerWidth;
+    let prevHeight = parent.clientHeight || window.innerHeight;
     
-    // Create an observer to watch the parent container dimensions
     const observer = new ResizeObserver(() => {
-      // Re-clamp the current position to the new parent dimensions
-      const clamped = clamp(posRef.current.x, posRef.current.y);
+      const newWidth = parent.clientWidth || window.innerWidth;
+      const newHeight = parent.clientHeight || window.innerHeight;
+      
+      if (newWidth === prevWidth && newHeight === prevHeight) return;
+
+      // Calculate proportional position
+      const percentX = posRef.current.x / Math.max(1, (prevWidth - (cardRef.current?.offsetWidth ?? cardW)));
+      const percentY = posRef.current.y / Math.max(1, (prevHeight - (cardRef.current?.offsetHeight ?? cardH)));
+      
+      prevWidth = newWidth;
+      prevHeight = newHeight;
+
+      // Apply proportional position to new dimensions
+      const targetX = percentX * (newWidth - (cardRef.current?.offsetWidth ?? cardW));
+      const targetY = percentY * (newHeight - (cardRef.current?.offsetHeight ?? cardH));
+      
+      const clamped = clamp(targetX, targetY);
+      
       if (clamped.x !== posRef.current.x || clamped.y !== posRef.current.y) {
         posRef.current = clamped;
-        setPos(clamped); // Trigger re-render to save state
+        setPos(clamped);
         if (cardRef.current) {
           cardRef.current.style.left = `${clamped.x}px`;
           cardRef.current.style.top  = `${clamped.y}px`;
@@ -117,9 +136,9 @@ function useDraggable(initialX, initialY, cardW = 240, cardH = 180) {
       }
     });
 
-    observer.observe(cardRef.current.offsetParent);
+    observer.observe(parent);
     return () => observer.disconnect();
-  }, [clamp]);
+  }, [clamp, cardW, cardH]);
 
   const onTouchStart = useCallback((e) => {
     const touch = e.touches[0];

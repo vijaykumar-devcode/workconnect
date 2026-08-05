@@ -153,18 +153,30 @@ class InterviewService {
     }
     logger.info(`[LiveKit Debug] Using API Key: "${apiKey}", Secret length: ${apiSecret.length}, Room: ${roomName}`);
 
-    // Short-lived token (10 minutes)
+    const durationMinutes = interview.duration || 45;
+    // Base TTL is interview duration plus 30 mins buffer, but minimum of 30 mins and max of 24h
+    const ttlMinutes = Math.max(30, Math.min(1440, durationMinutes + 30));
+    
+    // Convert to seconds string for the SDK
+    const ttlString = `${ttlMinutes * 60}s`;
+
     const at = new AccessToken(
       apiKey,
       apiSecret,
       {
         identity: user._id.toString(),
         name: user.name,
-        ttl: '10m', // 10 minutes TTL Security Rule
+        ttl: ttlString, // Dynamic TTL Security Rule
       }
     );
 
-    at.addGrant({ roomJoin: true, room: roomName });
+    at.addGrant({ 
+      roomJoin: true, 
+      room: roomName,
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true
+    });
 
     return at.toJwt();
   }
