@@ -64,9 +64,15 @@ class AuthService {
       await user.save();
     }
 
-    // Trigger Welcome & OTP Email non-blockingly
-    emailService.welcomeEmail(user).catch(err => console.error('Welcome email error:', err));
-    emailService.otpEmail(user, otp).catch(err => console.error('OTP email error:', err));
+    // Send emails sequentially in the background to avoid SMTP concurrency limits
+    (async () => {
+      try {
+        await emailService.welcomeEmail(user);
+        await emailService.otpEmail(user, otp);
+      } catch (err) {
+        console.error('Background email sending error:', err);
+      }
+    })();
 
     user.password = undefined;
     user.otp = undefined;
