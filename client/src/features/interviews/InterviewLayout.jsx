@@ -277,10 +277,8 @@ function DraggableVideoCard({ trackRef, label, defaultPosition, isMirrored = fal
       </div>
 
       {/* ── Bottom label + live indicator ───────────────────────────────── */}
-      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-between z-10" style={{ pointerEvents: 'none' }}>
-        <span className="bg-black/65 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] text-white font-medium truncate max-w-[160px]">
-          {label}
-        </span>
+      <div className="absolute bottom-2 left-2 right-2 flex items-center justify-end z-10" style={{ pointerEvents: 'none' }}>
+
         {trackRef && (
           <span className="flex items-center gap-1 bg-black/65 backdrop-blur-sm px-1.5 py-0.5 rounded">
             <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
@@ -440,7 +438,7 @@ export default function InterviewLayout({ interviewId }) {
   return (
     <div
       ref={containerRef}
-      className={`h-screen w-full flex flex-col overflow-hidden relative transition-colors duration-200 ${isDark ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'}`}
+      className={`h-[100dvh] w-full flex flex-col overflow-hidden relative transition-colors duration-200 ${isDark ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'}`}
     >
       <LiveKitRoom
         video={true}
@@ -522,7 +520,7 @@ export default function InterviewLayout({ interviewId }) {
           </div>
 
           <div className="flex-1 flex justify-center items-center">
-            <ControlBar className="!bg-transparent !p-0 !border-0" />
+            <ControlBar controls={{ microphone: true, camera: true, screenShare: true, leave: false }} className="!bg-transparent !p-0 !border-0" />
           </div>
 
           <div className="flex items-center justify-end w-1/3">

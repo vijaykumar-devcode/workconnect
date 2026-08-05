@@ -1,8 +1,11 @@
 import React, { useEffect } from 'react';
 import { useTracks, VideoTrack } from '@livekit/components-react';
 import { Track } from 'livekit-client';
+import { useInterview } from '../InterviewContext';
 
 export default function ScreenShareArea() {
+  const { role } = useInterview();
+
   // Official LiveKit React Pattern:
   // useTracks automatically handles the WebRTC event lifecycle, triggering React re-renders
   // natively when tracks are published, subscribed, or unpublished without any manual 'room.on' events.
@@ -41,7 +44,7 @@ export default function ScreenShareArea() {
           <svg className="w-12 h-12 text-slate-700 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          <p>Waiting for candidate to share screen...</p>
+          <p>{role === 'CANDIDATE' ? 'Waiting for interviewer to share screen...' : 'Waiting for candidate to share screen...'}</p>
         </div>
       </div>
     );
