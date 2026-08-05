@@ -43,7 +43,9 @@ class InterviewService {
 
     // Trigger Interview Invite Email
     if (application.candidate && application.job) {
-      await emailService.interviewEmail(application.candidate, application.job.title, interview);
+      // Fire and forget email sending to avoid blocking the HTTP response
+      emailService.interviewEmail(application.candidate, application.job.title, interview)
+        .catch(err => logger.error(`Failed to send interview email: ${err.message}`));
     }
 
     return interview;

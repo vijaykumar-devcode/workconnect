@@ -352,6 +352,27 @@ function VideoStreams({ containerRef }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// LiveClock
+// ─────────────────────────────────────────────────────────────────────────────
+function LiveClock({ isDark }) {
+  const [time, setTime] = useState(new Date());
+  
+  useEffect(() => {
+    const interval = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className={`text-sm font-mono font-bold flex items-center gap-1.5 ${isDark ? 'text-slate-300' : 'text-slate-600'}`}>
+      <svg className="w-4 h-4 opacity-70" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      {time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // InterviewLayout
 // ─────────────────────────────────────────────────────────────────────────────
 export default function InterviewLayout({ interviewId }) {
@@ -443,6 +464,8 @@ export default function InterviewLayout({ interviewId }) {
             <span className="px-2 py-0.5 rounded-full text-xs bg-green-500/20 text-green-500 font-medium">
               In Progress
             </span>
+            <div className={`h-4 w-px mx-2 ${isDark ? 'bg-slate-600' : 'bg-slate-300'}`} />
+            <LiveClock isDark={isDark} />
           </div>
 
           <div className="flex items-center gap-6">
